@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Sign In — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="max-w-sm mx-auto py-12">
+    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-6">Sign In</h1>
+
+    {% if error %}
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-3 mb-4">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+        <div>
+            <label for="email" class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Email</label>
+            <input type="email" name="email" id="email" required autofocus
+                   class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500">
+        </div>
+        <div>
+            <label for="password" class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Password</label>
+            <input type="password" name="password" id="password" required
+                   class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500">
+        </div>
+        <button type="submit" class="w-full px-4 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-lg hover:bg-blue-700 transition-colors">Sign In</button>
+    </form>
+
+    <p class="text-sm text-slate-400 mt-4 text-center">No account? <a href="/register" class="text-blue-600 hover:underline">Register</a> to get meeting notifications.</p>
+</div>
+{% endblock %}

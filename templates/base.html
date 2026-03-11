@@ -36,6 +36,11 @@
                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                     <input type="text" name="q" placeholder="Search..." aria-label="Search">
                 </form>
+                {% if current_user %}
+                <a href="/account" class="nav-link text-xs">{{ current_user.email.split('@')[0] }}</a>
+                {% else %}
+                <a href="/login" class="nav-link text-xs">Sign In</a>
+                {% endif %}
             </nav>
         </div>
     </header>

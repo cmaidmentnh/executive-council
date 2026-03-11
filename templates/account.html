@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Account — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto py-12">
+    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mb-6">Account Settings</h1>
+
+    <div class="card mb-6">
+        <div class="card-header">
+            <span class="card-title">Profile</span>
+        </div>
+        <div class="card-body">
+            <div class="text-sm text-slate-500">Email</div>
+            <div class="font-semibold text-slate-900">{{ user.email }}</div>
+            <div class="text-xs text-slate-400 mt-2">Member since {{ user.created_at[:10] }}</div>
+        </div>
+    </div>
+
+    <div class="card mb-6">
+        <div class="card-header">
+            <span class="card-title">Notifications</span>
+        </div>
+        <div class="card-body">
+            <form method="post" action="/account/notifications">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="notify_new_meetings" value="1"
+                           {% if user.notify_new_meetings %}checked{% endif %}
+                           class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">New meeting alerts</div>
+                        <div class="text-xs text-slate-400">Get an email when a new G&C agenda is posted with a summary of items and total value.</div>
+                    </div>
+                </label>
+                <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white font-semibold text-sm rounded-lg hover:bg-blue-700 transition-colors">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <a href="/logout" class="text-sm text-red-600 hover:underline">Sign out</a>
+</div>
+{% endblock %}

@@ -6,12 +6,16 @@ Flask app serving 14+ years of G&C meeting data.
 
 import sqlite3
 import os
+import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, abort, Response
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, abort, Response, session, redirect, url_for, flash
+from werkzeug.security import generate_password_hash, check_password_hash
 import csv
 import io
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 DB_PATH = os.path.join(os.path.dirname(__file__), "executive_council.db")
 R2_BASE = "https://pub-53c5014580f5456185d5efde8511a616.r2.dev"
 
@@ -1052,6 +1056,146 @@ def footer_stats():
     _footer_cache = stats
     _footer_cache_time = now
     return stats
+
+
+# ─── AUTH TABLES ───
+
+def init_auth_db():
+    """Create user-related tables if they don't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1,
+            notify_new_meetings INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notification_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            meeting_id INTEGER REFERENCES meetings(id),
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT,
+            error TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_auth_db()
+
+
+def get_current_user():
+    uid = session.get('user_id')
+    if not uid:
+        return None
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ? AND is_active = 1", (uid,)).fetchone()
+    db.close()
+    return user
+
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get('user_id'):
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return wrapper
+
+
+@app.context_processor
+def inject_user():
+    return {'current_user': get_current_user()}
+
+
+# ─── AUTH ROUTES ───
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if session.get('user_id'):
+        return redirect('/')
+    error = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        if not email or '@' not in email:
+            error = 'Valid email required.'
+        elif len(password) < 8:
+            error = 'Password must be at least 8 characters.'
+        elif password != confirm:
+            error = 'Passwords do not match.'
+        else:
+            db = get_db()
+            existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+            if existing:
+                error = 'An account with that email already exists.'
+            else:
+                db.execute(
+                    "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+                    (email, generate_password_hash(password))
+                )
+                db.commit()
+                user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+                session['user_id'] = user['id']
+                db.close()
+                return redirect('/')
+            db.close()
+    return render_template('register.html', error=error)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('user_id'):
+        return redirect('/')
+    error = None
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE email = ? AND is_active = 1", (email,)).fetchone()
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
+            db.execute("UPDATE users SET last_login = ? WHERE id = ?",
+                       (datetime.now().isoformat(), user['id']))
+            db.commit()
+            db.close()
+            next_url = request.args.get('next', '/')
+            return redirect(next_url)
+        error = 'Invalid email or password.'
+        db.close()
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/')
+
+
+@app.route('/account')
+@login_required
+def account():
+    user = get_current_user()
+    return render_template('account.html', user=user)
+
+
+@app.route('/account/notifications', methods=['POST'])
+@login_required
+def update_notifications():
+    notify = 1 if request.form.get('notify_new_meetings') else 0
+    db = get_db()
+    db.execute("UPDATE users SET notify_new_meetings = ? WHERE id = ?",
+               (notify, session['user_id']))
+    db.commit()
+    db.close()
+    return redirect(url_for('account'))
 
 
 @app.errorhandler(404)
