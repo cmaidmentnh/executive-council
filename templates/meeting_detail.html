@@ -86,8 +86,13 @@
 <!-- Agenda items table -->
 <div class="card">
     <div class="card-header">
-        <span class="card-title">Agenda Items</span>
+        <span class="card-title">Agenda Items{% if items %} ({{ items|length }}){% endif %}</span>
     </div>
+    {% if not items %}
+    <div class="card-body">
+        <p class="text-sm text-slate-400">No agenda items recorded for this meeting.</p>
+    </div>
+    {% else %}
     <div class="table-wrap">
         <table class="data-table">
             <thead>
@@ -149,6 +154,7 @@
             </tbody>
         </table>
     </div>
+    {% endif %}
 </div>
 
 {% endblock %}

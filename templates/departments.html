@@ -3,9 +3,15 @@
 
 {% block content %}
 
-<div class="mb-6">
-    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Departments</h1>
-    <p class="text-sm text-slate-500 mt-1">State departments ranked by total contract and grant spending</p>
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Departments</h1>
+        <p class="text-sm text-slate-500 mt-1">{{ total }} departments{% if search_q %} matching "{{ search_q }}"{% endif %} ranked by total contract and grant spending</p>
+    </div>
+    <form action="/departments" method="get" class="flex items-center gap-2">
+        <input type="text" name="q" value="{{ search_q }}" placeholder="Search departments..." class="form-input" style="width:220px;">
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    </form>
 </div>
 
 <div class="card">

@@ -412,6 +412,9 @@ def councilor_detail(councilor_id):
     if not councilor:
         abort(404)
 
+    page = int(request.args.get('page', 1))
+    per_page = 50
+
     terms = db.execute("SELECT * FROM councilors WHERE name = ? ORDER BY start_date",
                        (councilor['name'],)).fetchall()
     term_ids = [t['id'] for t in terms]
@@ -422,6 +425,11 @@ def councilor_detail(councilor_id):
         FROM councilor_vote_records WHERE councilor_id IN ({ph})
         GROUP BY vote
     """, term_ids).fetchall()
+
+    dissent_total = db.execute(f"""
+        SELECT COUNT(*) FROM councilor_vote_records
+        WHERE councilor_id IN ({ph}) AND vote = 'no'
+    """, term_ids).fetchone()[0]
 
     dissents = db.execute(f"""
         SELECT cvr.meeting_date, cvr.meeting_id, cvr.item_number,
@@ -435,12 +443,13 @@ def councilor_detail(councilor_id):
         )
         WHERE cvr.councilor_id IN ({ph}) AND cvr.vote = 'no'
         ORDER BY cvr.meeting_date DESC
-        LIMIT 200
-    """, term_ids).fetchall()
+        LIMIT ? OFFSET ?
+    """, term_ids + [per_page, (page - 1) * per_page]).fetchall()
 
     db.close()
     return render_template('councilor_detail.html', councilor=councilor, terms=terms,
-                           vote_summary=vote_summary, dissents=dissents)
+                           vote_summary=vote_summary, dissents=dissents,
+                           dissent_total=dissent_total, page=page, per_page=per_page)
 
 
 @app.route('/vendors')
@@ -529,6 +538,7 @@ def vendor_detail(vendor_name):
 @app.route('/departments')
 def departments():
     db = get_db()
+    search_q = request.args.get('q', '')
     raw_depts = db.execute("""
         SELECT ai.department, COUNT(*) as item_count, SUM(ai.amount) as total_amount,
                COUNT(DISTINCT ai.meeting_id) as meetings,
@@ -561,8 +571,12 @@ def departments():
                 'last_seen': d['last_seen'],
             }
     depts = sorted(merged.values(), key=lambda x: x['total_amount'] or 0, reverse=True)
+    if search_q:
+        sq = search_q.upper()
+        depts = [d for d in depts if sq in d['department'].upper()]
     db.close()
-    return render_template('departments.html', departments=depts)
+    return render_template('departments.html', departments=depts,
+                           search_q=search_q, total=len(depts))
 
 
 @app.route('/department/<path:dept_name>')

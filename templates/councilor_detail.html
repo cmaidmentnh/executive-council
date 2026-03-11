@@ -59,7 +59,7 @@
 {% if dissents %}
 <div class="card">
     <div class="card-header">
-        <span class="card-title">Dissenting Votes ({{ dissents|length }}{% if dissents|length == 200 %}+{% endif %})</span>
+        <span class="card-title">Dissenting Votes ({{ "{:,}".format(dissent_total) }})</span>
     </div>
     <div class="table-wrap">
         <table class="data-table">
@@ -88,6 +88,18 @@
         </table>
     </div>
 </div>
+
+{% if dissent_total > per_page %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ (dissent_total / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page * per_page < dissent_total %}
+    <a href="?page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
 {% endif %}
 
 {% endblock %}
