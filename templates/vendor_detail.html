@@ -22,6 +22,7 @@
                     <th>Item</th>
                     <th>Department</th>
                     <th>Description</th>
+                    <th class="text-center">Type</th>
                     <th class="text-right">Amount</th>
                     <th class="text-center">Outcome</th>
                 </tr>
@@ -39,6 +40,11 @@
                         {% if i.department %}<a href="/department/{{ i.department|norm_dept|urlencode }}" onclick="event.stopPropagation()">{{ i.department|norm_dept }}</a>{% endif %}
                     </td>
                     <td style="max-width:400px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
+                    <td class="text-center">
+                        {% if i.item_type and i.item_type != 'other' %}
+                        <span class="badge badge-type">{{ i.item_type }}</span>
+                        {% endif %}
+                    </td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ i.amount|currency }}</td>
                     <td class="text-center">
                         {% if i.outcome %}<span class="badge badge-{{ i.outcome }}">{{ i.outcome }}</span>{% endif %}

@@ -102,7 +102,7 @@
     </div>
     <div class="divide-y divide-slate-100">
         {% for p in personnel %}
-        <a href="/meeting/{{ p.meeting_id }}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+        <a href="{% if p.item_id %}/item/{{ p.item_id }}{% else %}/meeting/{{ p.meeting_id }}{% endif %}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0 text-center" style="min-width:60px;">
                     <div class="font-mono text-sm font-semibold text-blue-600">{{ p.mdate|compact_date }}</div>

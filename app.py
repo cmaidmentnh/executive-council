@@ -742,7 +742,9 @@ def search():
 
     # Also search personnel actions (person_name, position_title, description)
     personnel = db.execute("""
-        SELECT ca.*, m.meeting_date as mdate
+        SELECT ca.*, m.meeting_date as mdate,
+               (SELECT MIN(a2.id) FROM agenda_items a2
+                WHERE a2.meeting_id = ca.meeting_id AND a2.item_number = ca.item_number) as item_id
         FROM council_actions ca
         JOIN meetings m ON m.id = ca.meeting_id
         WHERE ca.action_type IN ('confirmation', 'nomination', 'resignation')
