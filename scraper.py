@@ -222,6 +222,17 @@ def extract_vendor(text):
             vendor = re.sub(r'^(the|a|an)\s+', '', vendor, flags=re.IGNORECASE)
             return vendor, city, state
 
+    # Fallback: "contract with VENDOR for/to/,..." (no city/state)
+    fallback = re.search(
+        r'(?:contract|agreement|grant|award)\s+(?:with|to)\s+(?:the\s+)?([A-Z][A-Za-z\s&.\'-]{2,80}?)(?:\s+for\s|\s+to\s|,\s+(?:for|to|by|effective|in|of|providing))',
+        text, re.IGNORECASE
+    )
+    if fallback:
+        vendor = clean_text(fallback.group(1))
+        if not re.search(r'#\d+\s', vendor):
+            vendor = re.sub(r'^(the|a|an)\s+', '', vendor, flags=re.IGNORECASE)
+            return vendor, None, None
+
     return None, None, None
 
 
