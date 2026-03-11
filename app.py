@@ -436,6 +436,7 @@ def vendors():
     db = get_db()
     page = int(request.args.get('page', 1))
     search = request.args.get('q', '')
+    sort = request.args.get('sort', 'amount')
     per_page = 50
 
     where = "WHERE ai.vendor IS NOT NULL"
@@ -446,6 +447,14 @@ def vendors():
     else:
         where += " AND ai.amount > 0"
 
+    sort_map = {
+        'amount': 'total_amount DESC',
+        'items': 'item_count DESC',
+        'name': 'vendor ASC',
+        'recent': 'last_seen DESC',
+    }
+    order = sort_map.get(sort, 'total_amount DESC')
+
     vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
     vendors_list = db.execute(f"""
         SELECT {vnorm} as vendor, COUNT(*) as item_count, SUM(ai.amount) as total_amount,
@@ -454,7 +463,7 @@ def vendors():
         JOIN meetings m ON m.id = ai.meeting_id
         {where}
         GROUP BY {vnorm}
-        ORDER BY total_amount DESC
+        ORDER BY {order}
         LIMIT ? OFFSET ?
     """, params + [per_page, (page - 1) * per_page]).fetchall()
 
@@ -464,7 +473,7 @@ def vendors():
 
     db.close()
     return render_template('vendors.html', vendors=vendors_list, search=search,
-                           page=page, total=total, per_page=per_page)
+                           page=page, total=total, per_page=per_page, sort=sort)
 
 
 @app.route('/vendor/<path:vendor_name>')
@@ -724,10 +733,14 @@ def contested():
     db = get_db()
     page = int(request.args.get('page', 1))
     councilor = request.args.get('councilor', '')
+    outcome_filter = request.args.get('outcome', '')
     per_page = 50
 
     where = "ca.dissenting_votes IS NOT NULL AND ca.dissenting_votes <> ''"
     params = []
+    if outcome_filter:
+        where += " AND ca.outcome = ?"
+        params.append(outcome_filter)
     # Reverse-lookup: if the normalized name has a known fix, also search the original
     _REVERSE_FIXES = {v: k for k, v in _NAME_FIXES.items()}
     if councilor:
@@ -767,10 +780,22 @@ def contested():
             all_names.add(name)
     all_names = sorted(all_names)
 
+    # Outcome counts for filter buttons
+    outcome_counts = db.execute("""
+        SELECT outcome, COUNT(*) as cnt FROM council_actions
+        WHERE dissenting_votes IS NOT NULL AND dissenting_votes <> ''
+        GROUP BY outcome
+    """).fetchall()
+    oc = {r['outcome']: r['cnt'] for r in outcome_counts}
+
     db.close()
     return render_template('contested.html', actions=actions, total=total,
                            page=page, per_page=per_page, councilor=councilor,
-                           all_names=all_names)
+                           outcome_filter=outcome_filter,
+                           all_names=all_names,
+                           denied_count=oc.get('denied', 0),
+                           tabled_count=oc.get('tabled', 0),
+                           approved_count=oc.get('approved', 0))
 
 
 @app.route('/nominations')
@@ -778,6 +803,7 @@ def nominations():
     db = get_db()
     page = int(request.args.get('page', 1))
     action_type = request.args.get('type', '')
+    search_q = request.args.get('q', '')
     per_page = 50
 
     where = "ca.action_type IN ('confirmation', 'nomination', 'resignation')"
@@ -785,6 +811,9 @@ def nominations():
     if action_type:
         where = "ca.action_type = ?"
         params.append(action_type)
+    if search_q:
+        where += " AND (ca.person_name LIKE ? OR ca.position_title LIKE ?)"
+        params.extend([f'%{search_q}%', f'%{search_q}%'])
 
     actions = db.execute(f"""
         SELECT ca.*, m.meeting_date as mdate,
@@ -808,6 +837,7 @@ def nominations():
     db.close()
     return render_template('nominations.html', actions=actions, total=total,
                            page=page, per_page=per_page, action_type=action_type,
+                           search_q=search_q,
                            counts={r['action_type']: r['cnt'] for r in counts})
 
 

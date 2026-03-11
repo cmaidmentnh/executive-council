@@ -14,6 +14,15 @@
     </form>
 </div>
 
+<!-- Sort options -->
+<div class="flex items-center gap-2 flex-wrap mb-6">
+    <span class="text-xs text-slate-400 mr-1">Sort:</span>
+    <a href="/vendors?q={{ search }}&sort=amount" class="btn {% if sort == 'amount' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">By Value</a>
+    <a href="/vendors?q={{ search }}&sort=items" class="btn {% if sort == 'items' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">By Items</a>
+    <a href="/vendors?q={{ search }}&sort=recent" class="btn {% if sort == 'recent' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">Most Recent</a>
+    <a href="/vendors?q={{ search }}&sort=name" class="btn {% if sort == 'name' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">A-Z</a>
+</div>
+
 <div class="card">
     <div class="table-wrap">
         <table class="data-table">
@@ -44,11 +53,11 @@
 {% if total > per_page %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?q={{ search }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    <a href="?q={{ search }}&sort={{ sort }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
     {% if page * per_page < total %}
-    <a href="?q={{ search }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    <a href="?q={{ search }}&sort={{ sort }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
     {% endif %}
 </div>
 {% endif %}

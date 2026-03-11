@@ -194,6 +194,9 @@ table { border-collapse: collapse; }
 .badge-tabled   { background: var(--amber-bg); color: var(--amber); }
 .badge-withdrawn { background: var(--border-light); color: var(--text-secondary); }
 .badge-confirmed { background: var(--blue-bg); color: var(--blue); }
+.badge-nominated { background: var(--purple-bg); color: var(--purple); }
+.badge-accepted  { background: var(--green-bg); color: var(--green); }
+.badge-not_used  { background: var(--border-light); color: var(--text-secondary); }
 .badge-nomination { background: var(--purple-bg); color: var(--purple); }
 .badge-resignation { background: var(--amber-bg); color: var(--amber); }
 .badge-r { background: var(--red-bg); color: var(--red); }

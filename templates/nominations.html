@@ -3,9 +3,16 @@
 
 {% block content %}
 
-<div class="mb-6">
-    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Actions</h1>
-    <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} action{{ 's' if total != 1 else '' }}{% if action_type %} ({{ action_type }}){% endif %}</p>
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Actions</h1>
+        <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} action{{ 's' if total != 1 else '' }}{% if action_type %} ({{ action_type }}){% endif %}{% if search_q %} matching "{{ search_q }}"{% endif %}</p>
+    </div>
+    <form action="/nominations" method="get" class="flex items-center gap-2">
+        {% if action_type %}<input type="hidden" name="type" value="{{ action_type }}">{% endif %}
+        <input type="text" name="q" value="{{ search_q }}" placeholder="Search by name..." class="form-input text-xs py-1.5" style="width:180px;">
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    </form>
 </div>
 
 <!-- Type filter -->
@@ -30,7 +37,7 @@
                     <th>Type</th>
                     <th>Person</th>
                     <th>Position</th>
-                    <th>Description</th>
+                    <th>Details</th>
                     <th class="text-center">Outcome</th>
                 </tr>
             </thead>
@@ -52,7 +59,12 @@
                         {% if a.person_city %}<span class="text-slate-400 font-normal text-xs">, {{ a.person_city }}</span>{% endif %}
                     </td>
                     <td style="max-width:250px;" class="text-[13px] truncate">{{ a.position_title or '' }}</td>
-                    <td style="max-width:250px;" class="text-xs text-slate-500 truncate">{{ a.description[:150] if a.description else '' }}</td>
+                    <td class="text-xs text-slate-500 space-y-0.5">
+                        {% if a.rsa_reference %}<div class="font-mono">{{ a.rsa_reference }}</div>{% endif %}
+                        {% if a.effective_date %}<div>{{ a.effective_date }}{% if a.term_end %} &mdash; {{ a.term_end }}{% endif %}</div>{% endif %}
+                        {% if a.salary %}<div class="font-semibold text-slate-600">{{ a.salary }}</div>{% endif %}
+                        {% if a.department %}<div>{{ a.department|norm_dept }}</div>{% endif %}
+                    </td>
                     <td class="text-center">
                         {% if a.outcome %}<span class="badge badge-{{ a.outcome }}">{{ a.outcome }}</span>{% endif %}
                         {% if a.dissenting_votes %}
@@ -72,11 +84,11 @@
 {% if total > per_page %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?type={{ action_type }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    <a href="?type={{ action_type }}&q={{ search_q }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
     {% if page * per_page < total %}
-    <a href="?type={{ action_type }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    <a href="?type={{ action_type }}&q={{ search_q }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
     {% endif %}
 </div>
 {% endif %}
