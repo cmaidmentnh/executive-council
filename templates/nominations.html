@@ -2,20 +2,21 @@
 {% block title %}Personnel Actions — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <h1 class="page-title">Personnel Actions</h1>
-    <p class="page-sub">{{ "{:,}".format(total) }} action{{ 's' if total != 1 else '' }}{% if action_type %} ({{ action_type }}){% endif %}</p>
+
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Actions</h1>
+    <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} action{{ 's' if total != 1 else '' }}{% if action_type %} ({{ action_type }}){% endif %}</p>
 </div>
 
-<!-- Type filter tabs -->
-<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px;">
-    <a href="/nominations" class="btn {% if not action_type %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:0.8125rem; padding:6px 14px;">
+<!-- Type filter -->
+<div class="flex items-center gap-2 flex-wrap mb-6">
+    <a href="/nominations" class="btn {% if not action_type %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
         All
     </a>
     {% for atype in ['confirmation', 'nomination', 'resignation'] %}
-    <a href="/nominations?type={{ atype }}" class="btn {% if action_type == atype %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:0.8125rem; padding:6px 14px;">
-        {{ atype|capitalize }}{{ 's' if atype != 'resignation' else 's' }}
-        {% if counts.get(atype) %}<span class="text-muted" style="margin-left:4px;">({{ "{:,}".format(counts[atype]) }})</span>{% endif %}
+    <a href="/nominations?type={{ atype }}" class="btn {% if action_type == atype %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+        {{ atype|capitalize }}s
+        {% if counts.get(atype) %}<span class="text-slate-400 ml-1">({{ "{:,}".format(counts[atype]) }})</span>{% endif %}
     </a>
     {% endfor %}
 </div>
@@ -30,13 +31,13 @@
                     <th>Person</th>
                     <th>Position</th>
                     <th>Description</th>
-                    <th class="center">Outcome</th>
+                    <th class="text-center">Outcome</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in actions %}
-                <tr>
-                    <td style="white-space:nowrap;"><a href="/meeting/{{ a.meeting_id }}">{{ a.mdate|compact_date }}</a></td>
+                <tr class="{% if a.dissenting_votes %}row-contested{% endif %}">
+                    <td class="whitespace-nowrap"><a href="/meeting/{{ a.meeting_id }}">{{ a.mdate|compact_date }}</a></td>
                     <td>
                         <span class="badge
                             {% if a.action_type == 'confirmation' %}badge-confirmed
@@ -46,15 +47,20 @@
                             {{ a.action_type }}
                         </span>
                     </td>
-                    <td style="font-weight:600; font-size:0.875rem;">
+                    <td class="font-semibold text-sm">
                         {{ a.person_name or '' }}
-                        {% if a.person_city %}<span class="text-muted" style="font-weight:400; font-size:0.75rem;">, {{ a.person_city }}</span>{% endif %}
+                        {% if a.person_city %}<span class="text-slate-400 font-normal text-xs">, {{ a.person_city }}</span>{% endif %}
                     </td>
-                    <td style="font-size:0.8125rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ a.position_title or '' }}</td>
-                    <td style="font-size:0.75rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-2);">{{ a.description[:150] if a.description else '' }}</td>
-                    <td class="center">
+                    <td style="max-width:250px;" class="text-[13px] truncate">{{ a.position_title or '' }}</td>
+                    <td style="max-width:250px;" class="text-xs text-slate-500 truncate">{{ a.description[:150] if a.description else '' }}</td>
+                    <td class="text-center">
                         {% if a.outcome %}<span class="badge badge-{{ a.outcome }}">{{ a.outcome }}</span>{% endif %}
-                        {% if a.dissenting_votes %}<div class="dissent-note" style="margin-top:2px;font-size:0.625rem;">{{ a.dissenting_votes }}</div>{% endif %}
+                        {% if a.dissenting_votes %}
+                        <div class="dissent-tag mt-1 justify-center text-[10px]">
+                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            {{ a.dissenting_votes }}
+                        </div>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -74,4 +80,5 @@
     {% endif %}
 </div>
 {% endif %}
+
 {% endblock %}

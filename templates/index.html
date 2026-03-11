@@ -1,75 +1,90 @@
 {% extends "base.html" %}
-{% block title %}NH Executive Council — Search Meetings, Votes & Contracts{% endblock %}
+{% block title %}NH Executive Council — Meetings, Votes & Contracts (2012-2026){% endblock %}
 
 {% block content %}
 
-<!-- Search-first hero -->
-<div class="search-hero">
-    <h1>NH Executive Council</h1>
-    <p>Search 14 years of meetings, contracts, votes and appointments.</p>
-    <form action="/search" method="get">
-        <input type="text" name="q" placeholder="Search contracts, vendors, departments..." autofocus>
-        <button type="submit">Search</button>
+<!-- Hero search -->
+<div class="text-center py-12 -mt-8 mb-8 border-b border-slate-200 bg-slate-50 -mx-6 px-6 rounded-b-lg">
+    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">NH Executive Council</h1>
+    <p class="text-slate-500 mt-1 text-sm">Search 14 years of meetings, contracts, votes and appointments.</p>
+    <form action="/search" method="get" class="max-w-xl mx-auto mt-6 flex gap-2">
+        <input type="text" name="q" placeholder="Search contracts, vendors, departments..."
+               class="flex-1 px-4 py-3 text-sm border-2 border-slate-200 rounded-lg font-[var(--font-sans)] outline-none focus:border-blue-500 bg-white"
+               autofocus>
+        <button type="submit" class="px-6 py-3 bg-blue-600 text-white font-semibold text-sm rounded-lg hover:bg-blue-700 transition-colors">Search</button>
     </form>
 </div>
 
 <!-- Stats bar -->
-<div class="stat-row">
-    <div class="stat">
+<div class="stat-grid mb-8">
+    <div class="stat-cell">
         <div class="stat-label">Meetings</div>
         <div class="stat-value">{{ "{:,}".format(stats.meetings) }}</div>
-        <div class="stat-note">2012 &ndash; 2026</div>
     </div>
-    <div class="stat">
+    <div class="stat-cell">
         <div class="stat-label">Agenda Items</div>
         <div class="stat-value">{{ "{:,}".format(stats.agenda_items) }}</div>
     </div>
-    <div class="stat">
+    <div class="stat-cell">
         <div class="stat-label">Contract Value</div>
         <div class="stat-value">{{ stats.total_spending|currency }}</div>
     </div>
-    <div class="stat">
+    <div class="stat-cell">
         <div class="stat-label">Contested Votes</div>
-        <div class="stat-value red">{{ "{:,}".format(stats.contested) }}</div>
+        <div class="stat-value text-red-600">{{ "{:,}".format(stats.contested) }}</div>
+    </div>
+    <div class="stat-cell">
+        <div class="stat-label">Documents</div>
+        <div class="stat-value">{{ "{:,}".format(stats.pdfs) }}</div>
     </div>
 </div>
 
-<!-- Main content: two columns -->
-<div class="two-col">
-    <!-- Left: meetings -->
-    <div>
-        <!-- Latest meeting -->
+<!-- Main: two columns -->
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+
+    <!-- LEFT: Latest + Recent (3 cols) -->
+    <div class="lg:col-span-3 space-y-6">
+
+        <!-- Latest meeting featured -->
         {% if latest %}
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card">
             <div class="card-header">
-                <span class="section-title">Latest Meeting</span>
-                <a href="/meeting/{{ latest.id }}" class="link-accent" style="font-size:.8rem;">View agenda &rarr;</a>
+                <span class="card-title">Latest Meeting</span>
+                <a href="/meeting/{{ latest.id }}" class="card-link">Full agenda &rarr;</a>
             </div>
             <div class="card-body">
-                <a href="/meeting/{{ latest.id }}" style="font-size:1.1rem; font-weight:700; color:var(--navy); text-decoration:none;">{{ latest.meeting_date|short_date }}</a>
+                <a href="/meeting/{{ latest.id }}" class="text-lg font-bold text-slate-900 hover:text-blue-600 no-underline">
+                    {{ latest.meeting_date|short_date }}
+                </a>
                 {% if latest.votes == 0 %}
-                <span class="badge badge-withdrawn" style="margin-left:8px;">Pending</span>
+                <span class="badge badge-withdrawn ml-2">Pending</span>
                 {% endif %}
 
                 <div class="flex flex-wrap gap-6 mt-4">
                     <div>
                         <div class="stat-label">Items</div>
-                        <div class="mono" style="font-size:1.25rem; font-weight:700; color:var(--navy);">{{ latest.item_count }}</div>
+                        <div class="font-mono text-xl font-bold text-slate-900">{{ latest.item_count }}</div>
                     </div>
                     <div>
                         <div class="stat-label">Votes</div>
-                        <div class="mono" style="font-size:1.25rem; font-weight:700; color:var(--navy);">{{ latest.votes }}</div>
+                        <div class="font-mono text-xl font-bold text-slate-900">{{ latest.votes }}</div>
                     </div>
                     {% if latest.contested > 0 %}
                     <div>
                         <div class="stat-label">Contested</div>
-                        <div class="mono" style="font-size:1.25rem; font-weight:700; color:var(--red);">{{ latest.contested }}</div>
+                        <div class="font-mono text-xl font-bold text-red-600">{{ latest.contested }}</div>
                     </div>
                     {% endif %}
                     {% if latest.total_value %}
                     <div>
-                        <div class="stat-label">Value</div>
-                        <div class="mono" style="font-size:1.25rem; font-weight:700; color:var(--navy);">{{ latest.total_value|currency }}</div>
+                        <div class="stat-label">Total Value</div>
+                        <div class="font-mono text-xl font-bold text-slate-900">{{ latest.total_value|currency }}</div>
+                    </div>
+                    {% endif %}
+                    {% if latest.confirmations > 0 %}
+                    <div>
+                        <div class="stat-label">Confirmations</div>
+                        <div class="font-mono text-xl font-bold text-blue-600">{{ latest.confirmations }}</div>
                     </div>
                     {% endif %}
                 </div>
@@ -77,93 +92,103 @@
         </div>
         {% endif %}
 
-        <!-- Recent meetings list -->
+        <!-- Recent meetings -->
         <div class="card">
             <div class="card-header">
-                <span class="section-title">Recent Meetings</span>
-                <a href="/meetings" class="link-accent" style="font-size:.8rem;">All meetings &rarr;</a>
+                <span class="card-title">Recent Meetings</span>
+                <a href="/meetings" class="card-link">All meetings &rarr;</a>
             </div>
-            {% for m in recent %}
-            <a href="/meeting/{{ m.id }}" class="list-row">
-                <div>
-                    <span class="mono" style="font-weight:600; font-size:.85rem; color:var(--navy);">{{ m.meeting_date|short_date }}</span>
-                    <span style="font-size:.75rem; color:var(--text-3); margin-left:6px;">{{ m.item_count }} items</span>
-                </div>
-                {% if m.votes == 0 %}
-                <span style="font-size:.7rem; color:var(--text-3); font-style:italic;">pending</span>
-                {% elif m.contested > 0 %}
-                <span class="badge badge-denied">{{ m.contested }} contested</span>
-                {% else %}
-                <span style="font-size:.7rem; color:var(--text-3);">unanimous</span>
-                {% endif %}
-            </a>
-            {% endfor %}
+            <div class="divide-y divide-slate-100">
+                {% for m in recent %}
+                <a href="/meeting/{{ m.id }}" class="flex items-center justify-between px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-sm font-semibold text-slate-900">{{ m.meeting_date|short_date }}</span>
+                        <span class="text-xs text-slate-400">{{ m.item_count }} items</span>
+                    </div>
+                    <div>
+                        {% if m.votes == 0 %}
+                        <span class="text-xs text-slate-400 italic">pending</span>
+                        {% elif m.contested > 0 %}
+                        <span class="badge badge-denied">{{ m.contested }} contested</span>
+                        {% else %}
+                        <span class="text-xs text-slate-400">unanimous</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
-    <!-- Right: council + contested -->
-    <div>
+    <!-- RIGHT: Council + Contested (2 cols) -->
+    <div class="lg:col-span-2 space-y-6">
+
         <!-- Current council -->
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card">
             <div class="card-header">
-                <span class="section-title">Current Council</span>
-                <a href="/councilors" class="link-accent" style="font-size:.8rem;">All &rarr;</a>
+                <span class="card-title">Current Council</span>
+                <a href="/councilors" class="card-link">All &rarr;</a>
             </div>
-            {% for c in councilors %}
-            <a href="/councilor/{{ c.id }}" class="list-row">
-                <div class="flex items-center gap-2">
-                    <span class="badge badge-{{ c.party|lower }}">{{ c.party }}</span>
-                    <span style="font-weight:600; font-size:.85rem; color:var(--navy);">{{ c.name }}</span>
-                    <span style="font-size:.7rem; color:var(--text-3);">D{{ c.district }}</span>
-                </div>
-                <span class="mono" style="font-size:.7rem; color:var(--text-3);">
-                    {{ c.no_votes }} no{{ '' if c.no_votes == 1 else '' }}
-                    ({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)
-                </span>
-            </a>
-            {% endfor %}
+            <div class="divide-y divide-slate-100">
+                {% for c in councilors %}
+                <a href="/councilor/{{ c.id }}" class="flex items-center justify-between px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-{{ c.party|lower }}">{{ c.party }}</span>
+                        <span class="font-semibold text-sm text-slate-900">{{ c.name }}</span>
+                        <span class="text-xs text-slate-400">D{{ c.district }}</span>
+                    </div>
+                    <span class="font-mono text-xs text-slate-400">
+                        {{ c.no_votes }} no ({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
         </div>
 
         <!-- Recent contested -->
         <div class="card">
             <div class="card-header">
-                <span class="section-title">Recent Contested Votes</span>
-                <a href="/contested" class="link-accent" style="font-size:.8rem;">All &rarr;</a>
+                <span class="card-title">Recent Contested Votes</span>
+                <a href="/contested" class="card-link">All &rarr;</a>
             </div>
-            {% for v in recent_contested %}
-            <a href="/meeting/{{ v.meeting_id }}" class="list-row" style="flex-direction:column; align-items:stretch;">
-                <div class="flex justify-between items-center w-full">
-                    <span class="mono" style="font-size:.7rem; color:var(--text-3);">{{ v.meeting_date|compact_date }} #{{ v.item_number or '?' }}</span>
-                    <span class="badge badge-{{ v.outcome or 'approved' }}">{{ v.outcome or '?' }}</span>
-                </div>
-                <div style="font-size:.8rem; color:var(--text-2); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ v.description[:140] if v.description else '' }}</div>
-                <div class="dissent-note">
-                    <svg style="width:11px;height:11px;" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                    {{ v.dissenting_votes }}
-                </div>
-            </a>
-            {% endfor %}
+            <div class="divide-y divide-slate-100">
+                {% for v in recent_contested %}
+                <a href="/meeting/{{ v.meeting_id }}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+                    <div class="flex justify-between items-center">
+                        <span class="font-mono text-xs text-slate-400">{{ v.meeting_date|compact_date }} #{{ v.item_number or '?' }}</span>
+                        {% if v.outcome %}
+                        <span class="badge badge-{{ v.outcome }}">{{ v.outcome }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-sm text-slate-600 mt-1 truncate">{{ v.description[:140] if v.description else '' }}</div>
+                    <div class="dissent-tag mt-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                        {{ v.dissenting_votes }}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Quick links -->
-<div class="grid-4" style="margin-top:40px;">
-    <a href="/vendors" class="stat-card" style="text-align:center; padding:24px;">
-        <div style="font-weight:700; color:var(--navy); margin-bottom:2px;">Vendors</div>
-        <div style="font-size:.75rem; color:var(--text-3);">{{ "{:,}".format(stats.vendors) }} companies</div>
+<!-- Quick nav cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+    <a href="/vendors" class="card text-center py-5 px-4 hover:border-blue-500 transition-colors no-underline">
+        <div class="font-bold text-slate-900">Vendors</div>
+        <div class="text-xs text-slate-400 mt-1">{{ "{:,}".format(stats.vendors) }} companies</div>
     </a>
-    <a href="/departments" class="stat-card" style="text-align:center; padding:24px;">
-        <div style="font-weight:700; color:var(--navy); margin-bottom:2px;">Departments</div>
-        <div style="font-size:.75rem; color:var(--text-3);">State agency spending</div>
+    <a href="/departments" class="card text-center py-5 px-4 hover:border-blue-500 transition-colors no-underline">
+        <div class="font-bold text-slate-900">Departments</div>
+        <div class="text-xs text-slate-400 mt-1">State agency spending</div>
     </a>
-    <a href="/nominations" class="stat-card" style="text-align:center; padding:24px;">
-        <div style="font-weight:700; color:var(--navy); margin-bottom:2px;">Personnel</div>
-        <div style="font-size:.75rem; color:var(--text-3);">Nominations &amp; confirmations</div>
+    <a href="/nominations" class="card text-center py-5 px-4 hover:border-blue-500 transition-colors no-underline">
+        <div class="font-bold text-slate-900">Personnel</div>
+        <div class="text-xs text-slate-400 mt-1">Nominations &amp; confirmations</div>
     </a>
-    <a href="/contested" class="stat-card" style="text-align:center; padding:24px;">
-        <div style="font-weight:700; color:var(--navy); margin-bottom:2px;">Contested Votes</div>
-        <div style="font-size:.75rem; color:var(--text-3);">{{ "{:,}".format(stats.contested) }} dissenting votes</div>
+    <a href="/contested" class="card text-center py-5 px-4 hover:border-blue-500 transition-colors no-underline">
+        <div class="font-bold text-slate-900">Contested Votes</div>
+        <div class="text-xs text-slate-400 mt-1">{{ "{:,}".format(stats.contested) }} dissenting votes</div>
     </a>
 </div>
 

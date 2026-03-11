@@ -15,6 +15,21 @@ app = Flask(__name__)
 DB_PATH = os.path.join(os.path.dirname(__file__), "executive_council.db")
 R2_BASE = "https://pub-53c5014580f5456185d5efde8511a616.r2.dev"
 
+# SQL expression to normalize vendor names (strip comma before Inc/LLC/LLP/Corp/Co./Ltd)
+# Use with .format(col='ai.vendor') or .format(col='vendor')
+VENDOR_NORM_SQL = ("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE("
+                   "{col}, ', Inc', ' Inc'), ', LLC', ' LLC'), ', LLP', ' LLP'),"
+                   " ', Corp', ' Corp'), ', Co.', ' Co.'), ', Ltd', ' Ltd')")
+
+
+def normalize_vendor(name):
+    """Python-side vendor name normalization matching VENDOR_NORM_SQL."""
+    if not name:
+        return name
+    for suffix in [', Inc', ', LLC', ', LLP', ', Corp', ', Co.', ', Ltd']:
+        name = name.replace(suffix, suffix.replace(',', ''))
+    return name
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -212,6 +227,55 @@ def meeting_detail(meeting_id):
                            summary=summary, prev_meeting=prev_meeting, next_meeting=next_meeting)
 
 
+@app.route('/item/<int:item_id>')
+def item_detail(item_id):
+    db = get_db()
+    item = db.execute("""
+        SELECT ai.*, m.meeting_date, m.id as mid,
+               ca.outcome, ca.dissenting_votes, ca.motion_by, ca.seconded_by, ca.abstaining,
+               ca.id as action_id
+        FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
+            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
+        WHERE ai.id = ?
+    """, (item_id,)).fetchone()
+    if not item:
+        abort(404)
+
+    # Sub-items (other items sharing same item_number but different sub_item)
+    sub_items = db.execute("""
+        SELECT ai.*, ca.outcome, ca.dissenting_votes
+        FROM agenda_items ai
+        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
+            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
+        WHERE ai.meeting_id = ? AND ai.item_number = ? AND ai.id != ?
+        ORDER BY ai.sub_item
+    """, (item['meeting_id'], item['item_number'], item_id)).fetchall()
+
+    # PDFs for this item
+    pdfs = db.execute("""
+        SELECT * FROM item_downloads
+        WHERE meeting_id = ? AND item_number = ?
+        ORDER BY sub_item
+    """, (item['meeting_id'], item['item_number'])).fetchall()
+
+    # Individual councilor votes
+    votes = []
+    if item['action_id']:
+        votes = db.execute("""
+            SELECT cvr.councilor_name, cvr.vote, cvr.district, c.party
+            FROM councilor_vote_records cvr
+            LEFT JOIN councilors c ON c.id = cvr.councilor_id
+            WHERE cvr.action_id = ?
+            ORDER BY cvr.district
+        """, (item['action_id'],)).fetchall()
+
+    db.close()
+    return render_template('item_detail.html', item=item, sub_items=sub_items,
+                           pdfs=pdfs, votes=votes, r2_base=R2_BASE)
+
+
 @app.route('/councilors')
 def councilors():
     db = get_db()
@@ -286,19 +350,20 @@ def vendors():
     else:
         where += " AND ai.amount > 0"
 
+    vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
     vendors_list = db.execute(f"""
-        SELECT ai.vendor, COUNT(*) as item_count, SUM(ai.amount) as total_amount,
+        SELECT {vnorm} as vendor, COUNT(*) as item_count, SUM(ai.amount) as total_amount,
                MIN(m.meeting_date) as first_seen, MAX(m.meeting_date) as last_seen
         FROM agenda_items ai
         JOIN meetings m ON m.id = ai.meeting_id
         {where}
-        GROUP BY ai.vendor
+        GROUP BY {vnorm}
         ORDER BY total_amount DESC
         LIMIT ? OFFSET ?
     """, params + [per_page, (page - 1) * per_page]).fetchall()
 
     total = db.execute(f"""
-        SELECT COUNT(DISTINCT ai.vendor) FROM agenda_items ai {where}
+        SELECT COUNT(DISTINCT {vnorm}) FROM agenda_items ai {where}
     """, params).fetchone()[0]
 
     db.close()
@@ -309,23 +374,26 @@ def vendors():
 @app.route('/vendor/<path:vendor_name>')
 def vendor_detail(vendor_name):
     db = get_db()
-    items = db.execute("""
+    # Normalize the incoming name so "Pike Industries, Inc." and "Pike Industries Inc." both work
+    normalized = normalize_vendor(vendor_name)
+    vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
+    items = db.execute(f"""
         SELECT ai.*, m.meeting_date,
                ca.outcome, ca.dissenting_votes
         FROM agenda_items ai
         JOIN meetings m ON m.id = ai.meeting_id
         LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
             AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
-        WHERE ai.vendor = ?
+        WHERE {vnorm} = ?
         ORDER BY m.meeting_date DESC
-    """, (vendor_name,)).fetchall()
+    """, (normalized,)).fetchall()
 
     if not items:
         abort(404)
 
     total_value = sum(i['amount'] or 0 for i in items)
     db.close()
-    return render_template('vendor_detail.html', vendor_name=vendor_name,
+    return render_template('vendor_detail.html', vendor_name=normalized,
                            items=items, total_value=total_value)
 
 

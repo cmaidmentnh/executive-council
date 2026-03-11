@@ -2,9 +2,10 @@
 {% block title %}Departments — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <h1 class="page-title">Departments</h1>
-    <p class="page-sub">State departments ranked by total contract and grant spending</p>
+
+<div class="mb-6">
+    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Departments</h1>
+    <p class="text-sm text-slate-500 mt-1">State departments ranked by total contract and grant spending</p>
 </div>
 
 <div class="card">
@@ -13,26 +14,27 @@
             <thead>
                 <tr>
                     <th>Department</th>
-                    <th class="right">Items</th>
-                    <th class="right">Meetings</th>
-                    <th class="right">Total Spending</th>
+                    <th class="text-right">Items</th>
+                    <th class="text-right">Meetings</th>
+                    <th class="text-right">Total Spending</th>
                     <th>First Seen</th>
                     <th>Last Seen</th>
                 </tr>
             </thead>
             <tbody>
                 {% for d in departments %}
-                <tr>
+                <tr class="clickable-row" onclick="window.location='/department/{{ d.department|urlencode }}'">
                     <td><a href="/department/{{ d.department }}">{{ d.department }}</a></td>
-                    <td class="num">{{ "{:,}".format(d.item_count) }}</td>
-                    <td class="num">{{ d.meetings }}</td>
-                    <td class="num bold">{{ d.total_amount|currency }}</td>
-                    <td class="num" style="text-align:left;">{{ d.first_seen|compact_date }}</td>
-                    <td class="num" style="text-align:left;">{{ d.last_seen|compact_date }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(d.item_count) }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ d.meetings }}</td>
+                    <td class="text-right font-mono text-sm font-bold text-slate-900">{{ d.total_amount|currency }}</td>
+                    <td class="font-mono text-sm text-slate-500">{{ d.first_seen|compact_date }}</td>
+                    <td class="font-mono text-sm text-slate-500">{{ d.last_seen|compact_date }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
 {% endblock %}

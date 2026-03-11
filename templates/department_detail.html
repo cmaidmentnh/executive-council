@@ -2,34 +2,40 @@
 {% block title %}{{ dept_name }} — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <a href="/departments" class="back-link">&larr; All Departments</a>
-    <h1 class="page-title mt-2">{{ dept_name }}</h1>
-    <p class="page-sub">{{ "{:,}".format(total) }} item{{ 's' if total != 1 else '' }} &middot; {{ total_value|currency }} total value</p>
+
+<!-- Header -->
+<div class="mb-6">
+    <a href="/departments" class="text-xs font-bold text-blue-600 uppercase tracking-wide no-underline hover:underline">&larr; All Departments</a>
+    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mt-3">{{ dept_name }}</h1>
+    <div class="flex items-center gap-4 mt-2">
+        <span class="text-sm text-slate-500">{{ "{:,}".format(total) }} item{{ 's' if total != 1 else '' }}</span>
+        <span class="font-mono text-sm font-bold text-slate-900">{{ total_value|currency }} total value</span>
+    </div>
 </div>
 
-<div class="grid-2 mb-8" style="gap:24px; align-items:start;">
-    <!-- Top Vendors -->
+<!-- Top Vendors + Item Types side by side -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
+
     {% if top_vendors %}
     <div class="card">
         <div class="card-header">
-            <div class="section-title">Top Vendors</div>
+            <span class="card-title">Top Vendors</span>
         </div>
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>Vendor</th>
-                        <th class="right">Items</th>
-                        <th class="right">Total</th>
+                        <th class="text-right">Items</th>
+                        <th class="text-right">Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for v in top_vendors %}
                     <tr>
                         <td><a href="/vendor/{{ v.vendor }}">{{ v.vendor }}</a></td>
-                        <td class="num">{{ v.item_count }}</td>
-                        <td class="num bold">{{ v.total_amount|currency }}</td>
+                        <td class="text-right font-mono text-sm text-slate-500">{{ v.item_count }}</td>
+                        <td class="text-right font-mono text-sm font-bold text-slate-900">{{ v.total_amount|currency }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -38,27 +44,26 @@
     </div>
     {% endif %}
 
-    <!-- Item Type Breakdown -->
     {% if type_breakdown %}
     <div class="card">
         <div class="card-header">
-            <div class="section-title">Item Types</div>
+            <span class="card-title">Item Types</span>
         </div>
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>Type</th>
-                        <th class="right">Count</th>
-                        <th class="right">Total Value</th>
+                        <th class="text-right">Count</th>
+                        <th class="text-right">Total Value</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for t in type_breakdown %}
                     <tr>
-                        <td>{{ t.item_type or 'other' }}</td>
-                        <td class="num">{{ "{:,}".format(t.cnt) }}</td>
-                        <td class="num bold">{{ t.total|currency }}</td>
+                        <td class="capitalize">{{ t.item_type or 'other' }}</td>
+                        <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(t.cnt) }}</td>
+                        <td class="text-right font-mono text-sm font-bold text-slate-900">{{ t.total|currency }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -68,10 +73,10 @@
     {% endif %}
 </div>
 
-<!-- Recent Items -->
+<!-- Items table -->
 <div class="card">
     <div class="card-header">
-        <div class="section-title">Items</div>
+        <span class="card-title">Items</span>
     </div>
     <div class="table-wrap">
         <table class="data-table">
@@ -81,21 +86,30 @@
                     <th>Item</th>
                     <th>Description</th>
                     <th>Vendor</th>
-                    <th class="right">Amount</th>
-                    <th class="center">Outcome</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center">Outcome</th>
                 </tr>
             </thead>
             <tbody>
                 {% for i in items %}
-                <tr>
-                    <td style="white-space:nowrap;"><a href="/meeting/{{ i.meeting_id }}">{{ i.meeting_date|compact_date }}</a></td>
-                    <td class="num" style="text-align:left;">#{{ i.item_number }}{{ i.sub_item or '' }}</td>
-                    <td style="max-width:350px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8125rem;">{{ i.description[:200] if i.description else '' }}</td>
-                    <td style="font-size:0.75rem;">{% if i.vendor %}<a href="/vendor/{{ i.vendor }}">{{ i.vendor[:30] }}</a>{% endif %}</td>
-                    <td class="num bold">{{ i.amount|currency }}</td>
-                    <td class="center">
+                <tr class="{% if i.dissenting_votes %}row-contested{% endif %} clickable-row" onclick="window.location='/item/{{ i.id }}'">
+                    <td class="whitespace-nowrap">
+                        <a href="/meeting/{{ i.meeting_id }}" onclick="event.stopPropagation()">{{ i.meeting_date|compact_date }}</a>
+                    </td>
+                    <td>
+                        <a href="/item/{{ i.id }}" class="font-mono text-xs font-bold text-slate-400 no-underline hover:text-blue-600" onclick="event.stopPropagation()">#{{ i.item_number }}{{ i.sub_item or '' }}</a>
+                    </td>
+                    <td style="max-width:350px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
+                    <td class="text-xs">{% if i.vendor %}<a href="/vendor/{{ i.vendor }}" onclick="event.stopPropagation()">{{ i.vendor[:30] }}</a>{% endif %}</td>
+                    <td class="text-right font-mono text-sm font-bold text-slate-900">{{ i.amount|currency }}</td>
+                    <td class="text-center">
                         {% if i.outcome %}<span class="badge badge-{{ i.outcome }}">{{ i.outcome }}</span>{% endif %}
-                        {% if i.dissenting_votes %}<div class="dissent-note" style="margin-top:2px;font-size:0.625rem;">{{ i.dissenting_votes }}</div>{% endif %}
+                        {% if i.dissenting_votes %}
+                        <div class="dissent-tag mt-1 justify-center text-[10px]">
+                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            {{ i.dissenting_votes }}
+                        </div>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -115,4 +129,5 @@
     {% endif %}
 </div>
 {% endif %}
+
 {% endblock %}

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Item {{ item.item_number }}{{ item.sub_item or '' }} — {{ item.meeting_date|short_date }} — NH Executive Council{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<div class="flex items-center gap-2 text-xs mb-6">
+    <a href="/meetings" class="text-blue-600 font-semibold uppercase tracking-wide no-underline hover:underline">Meetings</a>
+    <span class="text-slate-300">/</span>
+    <a href="/meeting/{{ item.mid }}" class="text-blue-600 font-semibold uppercase tracking-wide no-underline hover:underline">{{ item.meeting_date|short_date }}</a>
+    <span class="text-slate-300">/</span>
+    <span class="text-slate-500 font-semibold uppercase tracking-wide">Item {{ item.item_number }}{{ item.sub_item or '' }}</span>
+</div>
+
+<!-- Header -->
+<div class="mb-8">
+    <div class="flex items-center gap-3 flex-wrap mb-2">
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Item {{ item.item_number }}{{ item.sub_item or '' }}</h1>
+        {% if item.outcome %}
+        <span class="badge badge-{{ item.outcome }} text-sm px-3 py-1">{{ item.outcome }}</span>
+        {% endif %}
+        {% if item.item_type and item.item_type != 'other' %}
+        <span class="badge badge-type text-xs">{{ item.item_type }}</span>
+        {% endif %}
+        {% if item.is_consent_calendar %}
+        <span class="badge badge-type text-xs">consent calendar</span>
+        {% endif %}
+        {% if item.is_late_item %}
+        <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.65rem;">late item</span>
+        {% endif %}
+    </div>
+    <p class="text-sm text-slate-500">{{ item.meeting_date|short_date }}</p>
+</div>
+
+<!-- Key details grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+    <!-- Left: full description -->
+    <div class="md:col-span-2">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Description</span>
+            </div>
+            <div class="card-body">
+                <p class="text-[13px] leading-relaxed text-slate-700 whitespace-pre-line">{{ item.description or 'No description available.' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: metadata -->
+    <div class="space-y-4">
+        <!-- Amount -->
+        {% if item.amount %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <div class="stat-label">Amount</div>
+                <div class="font-mono text-2xl font-extrabold text-slate-900 mt-1">{{ item.amount|currency }}</div>
+                {% if item.amount_text %}
+                <div class="text-xs text-slate-400 mt-1">{{ item.amount_text }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Department -->
+        {% if item.department %}
+        <div class="card">
+            <div class="card-body py-4">
+                <div class="stat-label mb-1">Department</div>
+                <a href="/department/{{ item.department }}" class="text-sm font-semibold text-blue-600 hover:underline">{{ item.department }}</a>
+                {% if item.sub_department %}
+                <div class="text-xs text-slate-400 mt-0.5">{{ item.sub_department }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Vendor -->
+        {% if item.vendor %}
+        <div class="card">
+            <div class="card-body py-4">
+                <div class="stat-label mb-1">Vendor</div>
+                <a href="/vendor/{{ item.vendor }}" class="text-sm font-semibold text-blue-600 hover:underline">{{ item.vendor }}</a>
+                {% if item.vendor_city or item.vendor_state %}
+                <div class="text-xs text-slate-400 mt-0.5">{{ item.vendor_city or '' }}{% if item.vendor_city and item.vendor_state %}, {% endif %}{{ item.vendor_state or '' }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Additional details -->
+        {% if item.funding_source or item.effective_date_start %}
+        <div class="card">
+            <div class="card-body py-4 space-y-3">
+                {% if item.funding_source %}
+                <div>
+                    <div class="stat-label mb-0.5">Funding Source</div>
+                    <div class="text-xs text-slate-600">{{ item.funding_source }}</div>
+                </div>
+                {% endif %}
+                {% if item.effective_date_start %}
+                <div>
+                    <div class="stat-label mb-0.5">Effective Dates</div>
+                    <div class="text-xs text-slate-600 font-mono">{{ item.effective_date_start or '' }}{% if item.effective_date_end %} &mdash; {{ item.effective_date_end }}{% endif %}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Vote details -->
+{% if votes %}
+<div class="card mb-8">
+    <div class="card-header">
+        <span class="card-title">Vote Record</span>
+        {% if item.outcome %}
+        <span class="badge badge-{{ item.outcome }}">{{ item.outcome }}</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if item.motion_by %}
+        <div class="text-xs text-slate-500 mb-4">
+            Motion by <strong class="text-slate-700">{{ item.motion_by }}</strong>{% if item.seconded_by %}, seconded by <strong class="text-slate-700">{{ item.seconded_by }}</strong>{% endif %}
+        </div>
+        {% endif %}
+
+        <div class="flex flex-wrap gap-3">
+            {% for v in votes %}
+            <div class="vote-chip vote-chip-{{ v.vote }}">
+                <span>{{ v.councilor_name }}</span>
+                {% if v.party %}<span class="opacity-50 text-xs">({{ v.party }})</span>{% endif %}
+                <span class="font-bold uppercase text-xs">{{ v.vote }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if item.dissenting_votes %}
+        <div class="mt-4 pt-4 border-t border-slate-100">
+            <div class="dissent-tag">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                Dissenting: {{ item.dissenting_votes }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Sub-items -->
+{% if sub_items %}
+<div class="card mb-8">
+    <div class="card-header">
+        <span class="card-title">Related Sub-Items ({{ sub_items|length }})</span>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for si in sub_items %}
+        <a href="/item/{{ si.id }}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                    <span class="font-mono text-xs font-bold text-slate-400">{{ si.item_number }}{{ si.sub_item or '' }}</span>
+                    <div class="text-sm text-slate-700 mt-1 line-clamp-2">{{ si.description[:200] if si.description else '' }}</div>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    {% if si.amount %}
+                    <span class="font-mono text-sm font-bold text-slate-900">{{ si.amount|currency }}</span>
+                    {% endif %}
+                    {% if si.outcome %}
+                    <span class="badge badge-{{ si.outcome }}">{{ si.outcome }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- PDFs -->
+{% if pdfs %}
+<div class="space-y-6 mb-8">
+    <h2 class="text-lg font-bold text-slate-900">Documents ({{ pdfs|length }})</h2>
+
+    {% for pdf in pdfs %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                {{ pdf.filename }}
+                {% if pdf.sub_item %}<span class="text-slate-400 font-normal">({{ pdf.item_number }}{{ pdf.sub_item }})</span>{% endif %}
+            </span>
+            <a href="{{ r2_base }}/{{ item.meeting_date }}/{{ pdf.filename }}" target="_blank" class="card-link">Open in new tab &rarr;</a>
+        </div>
+        <iframe src="{{ r2_base }}/{{ item.meeting_date }}/{{ pdf.filename }}"
+                class="pdf-embed"
+                title="{{ pdf.filename }}"></iframe>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Back to meeting link -->
+<div class="mt-8 pt-6 border-t border-slate-200">
+    <a href="/meeting/{{ item.mid }}" class="btn btn-outline">&larr; Back to {{ item.meeting_date|short_date }} meeting</a>
+</div>
+
+{% endblock %}

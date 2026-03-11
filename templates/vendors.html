@@ -2,14 +2,15 @@
 {% block title %}Vendors — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="flex-between mb-8">
+
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
     <div>
-        <h1 class="page-title">Vendors</h1>
-        <p class="page-sub">{{ "{:,}".format(total) }} vendors{% if search %} matching "{{ search }}"{% endif %} &middot; ranked by total contract value</p>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Vendors</h1>
+        <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} vendors{% if search %} matching "{{ search }}"{% endif %} ranked by total contract value</p>
     </div>
-    <form action="/vendors" method="get" style="display:flex; align-items:center; gap:8px;">
-        <input type="text" name="q" value="{{ search }}" placeholder="Search vendors..." class="input" style="width:240px;">
-        <button type="submit" class="btn btn-primary">Search</button>
+    <form action="/vendors" method="get" class="flex items-center gap-2">
+        <input type="text" name="q" value="{{ search }}" placeholder="Search vendors..." class="form-input" style="width:220px;">
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
     </form>
 </div>
 
@@ -19,20 +20,20 @@
             <thead>
                 <tr>
                     <th>Vendor</th>
-                    <th class="right">Items</th>
-                    <th class="right">Total Value</th>
+                    <th class="text-right">Items</th>
+                    <th class="text-right">Total Value</th>
                     <th>First Seen</th>
                     <th>Last Seen</th>
                 </tr>
             </thead>
             <tbody>
                 {% for v in vendors %}
-                <tr>
+                <tr class="clickable-row" onclick="window.location='/vendor/{{ v.vendor|urlencode }}'">
                     <td><a href="/vendor/{{ v.vendor }}">{{ v.vendor }}</a></td>
-                    <td class="num">{{ "{:,}".format(v.item_count) }}</td>
-                    <td class="num bold">{{ v.total_amount|currency }}</td>
-                    <td class="num" style="text-align:left;">{{ v.first_seen|compact_date }}</td>
-                    <td class="num" style="text-align:left;">{{ v.last_seen|compact_date }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(v.item_count) }}</td>
+                    <td class="text-right font-mono text-sm font-bold text-slate-900">{{ v.total_amount|currency }}</td>
+                    <td class="font-mono text-sm text-slate-500">{{ v.first_seen|compact_date }}</td>
+                    <td class="font-mono text-sm text-slate-500">{{ v.last_seen|compact_date }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -51,4 +52,5 @@
     {% endif %}
 </div>
 {% endif %}
+
 {% endblock %}

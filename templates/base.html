@@ -5,43 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}NH Executive Council{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="bg-white text-slate-800">
+
+    <!-- Navigation -->
     <header class="site-nav">
-        <div class="wrap">
-            <a href="/" class="site-logo">
-                <div>
-                    <div class="logo-text">NH Executive Council</div>
-                </div>
-            </a>
-            <button class="nav-toggle" aria-label="Menu" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+        <div class="nav-inner">
+            <a href="/" class="site-logo">NH Executive Council</a>
+
+            <button class="nav-toggle" aria-label="Menu" onclick="document.querySelector('.nav-center').classList.toggle('open')">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <nav class="nav-links">
-                <a href="/meetings" class="nav-link {% if request.endpoint in ('meetings','meeting_detail') %}active{% endif %}">Meetings</a>
+
+            <nav class="nav-center">
+                <a href="/meetings" class="nav-link {% if request.endpoint in ('meetings','meeting_detail','item_detail') %}active{% endif %}">Meetings</a>
                 <a href="/councilors" class="nav-link {% if request.endpoint in ('councilors','councilor_detail') %}active{% endif %}">Councilors</a>
                 <a href="/vendors" class="nav-link {% if request.endpoint in ('vendors','vendor_detail') %}active{% endif %}">Vendors</a>
                 <a href="/departments" class="nav-link {% if request.endpoint in ('departments','department_detail') %}active{% endif %}">Departments</a>
                 <a href="/nominations" class="nav-link {% if request.endpoint == 'nominations' %}active{% endif %}">Personnel</a>
                 <a href="/contested" class="nav-link {% if request.endpoint == 'contested' %}active{% endif %}">Contested</a>
-                <a href="/search" class="nav-link {% if request.endpoint == 'search' %}active{% endif %}">
+                <form action="/search" method="get" class="nav-search">
                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                </a>
+                    <input type="text" name="q" placeholder="Search..." aria-label="Search">
+                </form>
             </nav>
         </div>
     </header>
-    <main class="wrap page">
+
+    <!-- Main content -->
+    <main class="container page-wrap">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Footer -->
     <footer class="site-footer">
-        <div class="wrap">
+        <div class="container flex flex-col sm:flex-row justify-between items-center gap-2 text-center sm:text-left">
             <div>Data from the <a href="https://www.sos.nh.gov">NH Secretary of State</a> &middot; 333 meetings &middot; 2012&ndash;2026</div>
             <div>33,000+ documents &middot; 180,000+ vote records</div>
         </div>
     </footer>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

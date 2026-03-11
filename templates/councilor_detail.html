@@ -2,29 +2,31 @@
 {% block title %}{{ councilor.name }} — NH Executive Council{% endblock %}
 
 {% block content %}
-<div style="margin-bottom:32px;">
-    <a href="/councilors" class="back-link">&larr; All Councilors</a>
-    <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
-        <h1 class="page-title">{{ councilor.name }}</h1>
-        <span class="badge badge-{{ councilor.party|lower }}" style="font-size:0.75rem; padding:3px 10px;">{{ councilor.party }}</span>
+
+<!-- Header -->
+<div class="mb-8">
+    <a href="/councilors" class="text-xs font-bold text-blue-600 uppercase tracking-wide no-underline hover:underline">&larr; All Councilors</a>
+    <div class="flex items-center gap-3 mt-3 flex-wrap">
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">{{ councilor.name }}</h1>
+        <span class="badge badge-{{ councilor.party|lower }} text-sm px-3 py-1">{{ councilor.party }}</span>
     </div>
-    <p class="page-sub">District {{ councilor.district }}</p>
+    <p class="text-sm text-slate-500 mt-1">District {{ councilor.district }}</p>
 </div>
 
 <!-- Terms + Voting side by side -->
-<div class="two-col" style="margin-bottom:32px;">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <!-- Terms -->
     <div class="card">
         <div class="card-header">
-            <span class="section-title">Terms of Service</span>
+            <span class="card-title">Terms of Service</span>
         </div>
         <div class="card-body">
-            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <div class="flex flex-wrap gap-3">
                 {% for t in terms %}
-                <div style="background:var(--bg-wash); border:1px solid var(--border-lt); border-radius:6px; padding:8px 14px;">
-                    <div class="mono" style="font-size:0.8125rem; font-weight:600; color:var(--navy);">{{ t.start_date|short_date }} &rarr; {{ t.end_date|short_date if t.end_date else 'Present' }}</div>
-                    <div style="font-size:0.7rem; color:var(--text-3);">District {{ t.district }}</div>
-                    {% if t.notes %}<div style="font-size:0.7rem; color:var(--text-3); margin-top:2px;">{{ t.notes }}</div>{% endif %}
+                <div class="bg-slate-50 border border-slate-100 rounded-md px-4 py-2.5">
+                    <div class="font-mono text-sm font-semibold text-slate-900">{{ t.start_date|short_date }} &rarr; {{ t.end_date|short_date if t.end_date else 'Present' }}</div>
+                    <div class="text-xs text-slate-400">District {{ t.district }}</div>
+                    {% if t.notes %}<div class="text-xs text-slate-400 mt-0.5">{{ t.notes }}</div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -34,7 +36,7 @@
     <!-- Voting Record -->
     <div class="card">
         <div class="card-header">
-            <span class="section-title">Voting Record</span>
+            <span class="card-title">Voting Record</span>
         </div>
         <div class="card-body">
             {% set total = vote_summary|map(attribute='cnt')|sum %}
@@ -42,7 +44,7 @@
             <div class="vote-bar-wrap">
                 <div class="vote-bar-header">
                     <span class="vote-bar-label {{ v.vote }}">{{ v.vote }}</span>
-                    <span class="vote-bar-value">{{ "{:,}".format(v.cnt) }} <span>({{ "%.1f"|format(v.cnt / total * 100) if total else 0 }}%)</span></span>
+                    <span class="vote-bar-count">{{ "{:,}".format(v.cnt) }} <span class="text-slate-400 font-normal">({{ "%.1f"|format(v.cnt / total * 100) if total else 0 }}%)</span></span>
                 </div>
                 <div class="vote-bar-track">
                     <div class="vote-bar-fill {{ v.vote }}" style="width: {{ (v.cnt / total * 100) if total else 0 }}%;"></div>
@@ -53,11 +55,11 @@
     </div>
 </div>
 
-<!-- Dissents -->
+<!-- Dissents table -->
 {% if dissents %}
 <div class="card">
     <div class="card-header">
-        <span class="section-title">Dissenting Votes ({{ dissents|length }}{% if dissents|length == 200 %}+{% endif %})</span>
+        <span class="card-title">Dissenting Votes ({{ dissents|length }}{% if dissents|length == 200 %}+{% endif %})</span>
     </div>
     <div class="table-wrap">
         <table class="data-table">
@@ -67,19 +69,19 @@
                     <th>Item</th>
                     <th>Description</th>
                     <th>Vendor</th>
-                    <th class="right">Amount</th>
-                    <th class="center">Outcome</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center">Outcome</th>
                 </tr>
             </thead>
             <tbody>
                 {% for d in dissents %}
-                <tr>
-                    <td style="white-space:nowrap;"><a href="/meeting/{{ d.meeting_id }}">{{ d.meeting_date|compact_date }}</a></td>
-                    <td class="num" style="text-align:left;">#{{ d.item_number or '?' }}</td>
-                    <td style="max-width:350px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8125rem;">{{ d.description[:200] if d.description else '' }}</td>
-                    <td style="font-size:0.75rem;">{% if d.vendor %}<a href="/vendor/{{ d.vendor }}">{{ d.vendor[:25] }}</a>{% endif %}</td>
-                    <td class="num">{{ d.amount|currency }}</td>
-                    <td class="center"><span class="badge badge-{{ d.outcome or 'approved' }}">{{ d.outcome or '?' }}</span></td>
+                <tr class="row-contested">
+                    <td class="whitespace-nowrap"><a href="/meeting/{{ d.meeting_id }}">{{ d.meeting_date|compact_date }}</a></td>
+                    <td class="font-mono text-xs font-bold text-slate-400">#{{ d.item_number or '?' }}</td>
+                    <td style="max-width:350px;" class="text-[13px] truncate">{{ d.description[:200] if d.description else '' }}</td>
+                    <td class="text-xs">{% if d.vendor %}<a href="/vendor/{{ d.vendor }}">{{ d.vendor[:25] }}</a>{% endif %}</td>
+                    <td class="text-right font-mono text-sm font-bold text-slate-900">{{ d.amount|currency }}</td>
+                    <td class="text-center"><span class="badge badge-{{ d.outcome or 'approved' }}">{{ d.outcome or '?' }}</span></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -87,4 +89,5 @@
     </div>
 </div>
 {% endif %}
+
 {% endblock %}

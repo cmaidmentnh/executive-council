@@ -2,67 +2,79 @@
 {% block title %}Councilors — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="mb-10">
-    <h1 class="page-title">Executive Councilors</h1>
-    <p class="page-sub">Current and historical council members with complete voting records</p>
+
+<div class="mb-8">
+    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Executive Councilors</h1>
+    <p class="text-sm text-slate-500 mt-1">Current and historical council members with complete voting records</p>
 </div>
 
 <!-- Current Council -->
-<div class="section-title mb-4">Current Council</div>
-<div class="grid-5 mb-12">
+<h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Current Council</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-12">
     {% for c in current %}
     <a href="/councilor/{{ c.id }}" class="councilor-card">
-        <div class="party-bar {{ c.party|lower }}"></div>
-        <div class="district">District {{ c.district }}</div>
-        <div class="name">{{ c.name }}</div>
-        <span class="badge badge-{{ c.party|lower }}" style="margin-top:8px;">{{ c.party }}</span>
-        <div class="card-stats">
-            <div class="card-stat-row">
-                <span class="label">Total votes</span>
-                <span class="value">{{ "{:,}".format(c.total_votes) }}</span>
+        <div class="party-stripe {{ c.party|lower }}"></div>
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">District {{ c.district }}</div>
+        <div class="text-base font-bold text-slate-900 mt-1">{{ c.name }}</div>
+        <span class="badge badge-{{ c.party|lower }} mt-2">{{ c.party }}</span>
+        <div class="mt-3 pt-3 border-t border-slate-100 space-y-1">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-400">Total votes</span>
+                <span class="font-mono font-semibold text-slate-600">{{ "{:,}".format(c.total_votes) }}</span>
             </div>
-            <div class="card-stat-row">
-                <span class="label">Dissents</span>
-                <span class="value">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-400">Yes</span>
+                <span class="font-mono font-semibold text-green-600">{{ "{:,}".format(c.yes_votes) }}</span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-400">No (dissents)</span>
+                <span class="font-mono font-semibold text-red-600">
                     {{ c.no_votes }}
-                    <span style="color:var(--text-3);font-weight:400;">({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)</span>
+                    ({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)
                 </span>
             </div>
+            {% if c.abstain_votes %}
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-400">Abstain</span>
+                <span class="font-mono font-semibold text-slate-500">{{ c.abstain_votes }}</span>
+            </div>
+            {% endif %}
         </div>
     </a>
     {% endfor %}
 </div>
 
 <!-- Historical -->
-<div class="section-title mb-4">Historical Councilors</div>
+<h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Historical Councilors</h2>
 <div class="card">
     <div class="table-wrap">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th class="center">Dist</th>
-                    <th class="center">Party</th>
+                    <th class="text-center">Dist</th>
+                    <th class="text-center">Party</th>
                     <th>Served</th>
-                    <th class="right">Total Votes</th>
-                    <th class="right">Dissents</th>
-                    <th class="right">Rate</th>
+                    <th class="text-right">Total Votes</th>
+                    <th class="text-right">Dissents</th>
+                    <th class="text-right">Rate</th>
                 </tr>
             </thead>
             <tbody>
                 {% for c in historical %}
-                <tr>
+                <tr class="clickable-row" onclick="window.location='/councilor/{{ c.id }}'">
                     <td><a href="/councilor/{{ c.id }}">{{ c.name }}</a></td>
-                    <td class="center" style="color:var(--text-2);">{{ c.district }}</td>
-                    <td class="center"><span class="badge badge-{{ c.party|lower }}">{{ c.party }}</span></td>
-                    <td class="num" style="text-align:left;">{{ c.start_date[:4] }}&ndash;{{ c.end_date[:4] if c.end_date else '' }}</td>
-                    <td class="num">{{ "{:,}".format(c.total_votes) }}</td>
-                    <td class="num {% if c.no_votes > 50 %}bold{% endif %}" style="{% if c.no_votes > 50 %}color:var(--red);{% endif %}">{{ c.no_votes }}</td>
-                    <td class="num">{% if c.total_votes > 0 %}{{ "%.1f"|format(100 * c.no_votes / c.total_votes) }}%{% endif %}</td>
+                    <td class="text-center text-slate-500">{{ c.district }}</td>
+                    <td class="text-center"><span class="badge badge-{{ c.party|lower }}">{{ c.party }}</span></td>
+                    <td class="font-mono text-sm text-slate-500">{{ c.start_date[:4] }}&ndash;{{ c.end_date[:4] if c.end_date else '' }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(c.total_votes) }}</td>
+                    <td class="text-right font-mono text-sm {% if c.no_votes > 50 %}font-bold text-red-600{% else %}text-slate-500{% endif %}">{{ c.no_votes }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{% if c.total_votes > 0 %}{{ "%.1f"|format(100 * c.no_votes / c.total_votes) }}%{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
 {% endblock %}

@@ -2,17 +2,30 @@
 {% block title %}Meetings — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="flex-between mb-8">
+
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
     <div>
-        <h1 class="page-title">Meetings</h1>
-        <p class="page-sub">{{ "{:,}".format(total) }} meetings{% if current_year %} in {{ current_year }}{% endif %}</p>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Meetings</h1>
+        <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} meetings{% if current_year %} in {{ current_year }}{% endif %}</p>
     </div>
-    <select onchange="window.location='/meetings?year='+this.value" class="select">
-        <option value="">All Years</option>
-        {% for y in years %}
-        <option value="{{ y.y }}" {% if current_year == y.y %}selected{% endif %}>{{ y.y }}</option>
+
+    <!-- Year filter -->
+    <div class="flex items-center gap-2 flex-wrap">
+        <a href="/meetings" class="btn {% if not current_year %}btn-primary{% else %}btn-outline{% endif %} btn-sm">All Years</a>
+        {% for y in years[:5] %}
+        <a href="/meetings?year={{ y.y }}" class="btn {% if current_year == y.y %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ y.y }}</a>
         {% endfor %}
-    </select>
+        {% if years|length > 5 %}
+        <form action="/meetings" method="get" class="inline">
+            <select name="year" onchange="this.form.submit()" class="form-select text-xs py-1">
+                <option value="">More...</option>
+                {% for y in years[5:] %}
+                <option value="{{ y.y }}" {% if current_year == y.y %}selected{% endif %}>{{ y.y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+    </div>
 </div>
 
 <div class="card">
@@ -21,34 +34,32 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th class="right">Items</th>
-                    <th class="right">Total Value</th>
-                    <th class="right">Votes</th>
-                    <th class="right">Contested</th>
-                    <th class="right">PDFs</th>
+                    <th class="text-right">Items</th>
+                    <th class="text-right">Value</th>
+                    <th class="text-right">Votes</th>
+                    <th class="text-right">PDFs</th>
+                    <th class="text-center">Status</th>
                 </tr>
             </thead>
             <tbody>
                 {% for m in meetings %}
-                <tr>
-                    <td><a href="/meeting/{{ m.id }}">{{ m.meeting_date|short_date }}</a></td>
-                    <td class="num">{{ m.item_count }}</td>
-                    <td class="num">{{ m.total_value|currency }}</td>
-                    <td class="num">
+                <tr class="clickable-row" onclick="window.location='/meeting/{{ m.id }}'">
+                    <td>
+                        <a href="/meeting/{{ m.id }}" class="font-semibold">{{ m.meeting_date|short_date }}</a>
+                    </td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ m.item_count }}</td>
+                    <td class="text-right font-mono text-sm font-bold text-slate-900">{{ m.total_value|currency }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ m.votes }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500">{{ m.pdfs }}</td>
+                    <td class="text-center">
                         {% if m.votes == 0 %}
-                        <span class="text-muted" style="font-style:italic; font-size:0.75rem;">pending</span>
+                        <span class="badge badge-withdrawn">pending</span>
+                        {% elif m.contested > 0 %}
+                        <span class="badge badge-denied">{{ m.contested }} contested</span>
                         {% else %}
-                        {{ m.votes }}
+                        <span class="text-xs text-slate-400">unanimous</span>
                         {% endif %}
                     </td>
-                    <td class="right">
-                        {% if m.contested > 0 %}
-                        <span class="badge badge-denied">{{ m.contested }}</span>
-                        {% else %}
-                        <span class="text-muted">&mdash;</span>
-                        {% endif %}
-                    </td>
-                    <td class="num">{{ m.pdfs }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -67,4 +78,5 @@
     {% endif %}
 </div>
 {% endif %}
+
 {% endblock %}
