@@ -203,10 +203,11 @@ def extract_vendor(text):
     # Common patterns:
     # "contract with VENDOR NAME, CITY, STATE,"
     # "agreement with VENDOR NAME, CITY, STATE,"
-    # "to VENDOR NAME, CITY, STATE,"
+    # Vendor names are capped at ~120 chars to avoid runaway matches on broken data
     patterns = [
-        r'(?:contract|agreement|grant|award)\s+(?:with|to)\s+(?:the\s+)?(.+?),\s+([A-Za-z\s.]+),\s+([A-Z]{2})\b',
-        r'(?:to enter into a (?:sole[- ]source )?(?:contract|agreement))\s+with\s+(.+?),\s+([A-Za-z\s.]+),\s+([A-Z]{2})\b',
+        r'(?:contract|agreement|grant|award)\s+(?:with|to)\s+(?:the\s+)?(.{3,120}?),\s+([A-Za-z\s.]{2,30}),\s+([A-Z]{2})\b',
+        r'(?:to enter into a (?:sole[- ]source )?(?:contract|agreement))\s+with\s+(.{3,120}?),\s+([A-Za-z\s.]{2,30}),\s+([A-Z]{2})\b',
+        r'(?:contract amendment with|amend a (?:contract|grant)(?: agreement)? (?:with|for))\s+(?:the\s+)?(.{3,120}?),\s+([A-Za-z\s.]{2,30}),\s+([A-Z]{2})\b',
     ]
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
@@ -214,6 +215,9 @@ def extract_vendor(text):
             vendor = clean_text(match.group(1))
             city = clean_text(match.group(2))
             state = match.group(3)
+            # Reject if vendor contains item markers (sign of broken parsing)
+            if re.search(r'#\d+\s', vendor):
+                continue
             # Clean up vendor name - remove leading articles
             vendor = re.sub(r'^(the|a|an)\s+', '', vendor, flags=re.IGNORECASE)
             return vendor, city, state
