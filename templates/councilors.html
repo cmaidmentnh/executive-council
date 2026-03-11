@@ -25,7 +25,7 @@
                 <span class="label">Dissents</span>
                 <span class="value">
                     {{ c.no_votes }}
-                    <span style="color:var(--c-text-muted);font-weight:400;">({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)</span>
+                    <span style="color:var(--text-3);font-weight:400;">({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)</span>
                 </span>
             </div>
         </div>
@@ -53,11 +53,11 @@
                 {% for c in historical %}
                 <tr>
                     <td><a href="/councilor/{{ c.id }}">{{ c.name }}</a></td>
-                    <td class="center" style="color:var(--c-text-mid);">{{ c.district }}</td>
+                    <td class="center" style="color:var(--text-2);">{{ c.district }}</td>
                     <td class="center"><span class="badge badge-{{ c.party|lower }}">{{ c.party }}</span></td>
                     <td class="num" style="text-align:left;">{{ c.start_date[:4] }}&ndash;{{ c.end_date[:4] if c.end_date else '' }}</td>
                     <td class="num">{{ "{:,}".format(c.total_votes) }}</td>
-                    <td class="num {% if c.no_votes > 50 %}bold{% endif %}" style="{% if c.no_votes > 50 %}color:var(--c-red);{% endif %}">{{ c.no_votes }}</td>
+                    <td class="num {% if c.no_votes > 50 %}bold{% endif %}" style="{% if c.no_votes > 50 %}color:var(--red);{% endif %}">{{ c.no_votes }}</td>
                     <td class="num">{% if c.total_votes > 0 %}{{ "%.1f"|format(100 * c.no_votes / c.total_votes) }}%{% endif %}</td>
                 </tr>
                 {% endfor %}

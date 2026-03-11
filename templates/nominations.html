@@ -51,7 +51,7 @@
                         {% if a.person_city %}<span class="text-muted" style="font-weight:400; font-size:0.75rem;">, {{ a.person_city }}</span>{% endif %}
                     </td>
                     <td style="font-size:0.8125rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ a.position_title or '' }}</td>
-                    <td style="font-size:0.75rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-text-mid);">{{ a.description[:150] if a.description else '' }}</td>
+                    <td style="font-size:0.75rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-2);">{{ a.description[:150] if a.description else '' }}</td>
                     <td class="center">
                         {% if a.outcome %}<span class="badge badge-{{ a.outcome }}">{{ a.outcome }}</span>{% endif %}
                         {% if a.dissenting_votes %}<div class="dissent-note" style="margin-top:2px;font-size:0.625rem;">{{ a.dissenting_votes }}</div>{% endif %}

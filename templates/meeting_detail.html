@@ -3,38 +3,44 @@
 
 {% block content %}
 
-<!-- Top navigation shortcuts -->
-<div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+<!-- Breadcrumb nav -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:8px;">
     {% if prev_meeting %}
     <a href="/meeting/{{ prev_meeting.id }}" class="back-link">&larr; {{ prev_meeting.meeting_date|short_date }}</a>
-    {% else %}
-    <span></span>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
 
     <a href="/meetings" class="back-link">All Meetings</a>
 
     {% if next_meeting %}
     <a href="/meeting/{{ next_meeting.id }}" class="back-link">{{ next_meeting.meeting_date|short_date }} &rarr;</a>
-    {% else %}
-    <span></span>
-    {% endif %}
+    {% else %}<span></span>{% endif %}
 </div>
 
-<h1 class="page-title mb-2">{{ meeting.meeting_date|short_date }}</h1>
+<h1 class="page-title" style="margin-bottom:8px;">{{ meeting.meeting_date|short_date }}</h1>
 
-<!-- Meeting summary badges -->
-<div class="flex flex-wrap items-center gap-3 mb-8">
-    <span class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;"><strong>{{ meeting.item_count }}</strong>&nbsp;items</span>
+<!-- Summary strip -->
+<div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:32px;">
+    <span class="badge" style="background:var(--bg-wash); border:1px solid var(--border); padding:5px 12px; font-size:0.8rem;">
+        <strong>{{ meeting.item_count }}</strong> items
+    </span>
     {% if summary.total_value %}
-    <span class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;"><strong>{{ summary.total_value|currency }}</strong>&nbsp;total value</span>
+    <span class="badge" style="background:var(--bg-wash); border:1px solid var(--border); padding:5px 12px; font-size:0.8rem;">
+        <strong>{{ summary.total_value|currency }}</strong> total value
+    </span>
     {% endif %}
-    {% if summary.contracts %}<span class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">{{ summary.contracts }} contracts</span>{% endif %}
-    {% if summary.grants %}<span class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">{{ summary.grants }} grants</span>{% endif %}
-    {% if summary.consent_items %}<span class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">{{ summary.consent_items }} consent calendar</span>{% endif %}
+    {% if summary.contracts %}
+    <span class="badge" style="background:var(--bg-wash); border:1px solid var(--border); padding:5px 12px; font-size:0.8rem;">{{ summary.contracts }} contracts</span>
+    {% endif %}
+    {% if summary.grants %}
+    <span class="badge" style="background:var(--bg-wash); border:1px solid var(--border); padding:5px 12px; font-size:0.8rem;">{{ summary.grants }} grants</span>
+    {% endif %}
+    {% if summary.consent_items %}
+    <span class="badge" style="background:var(--bg-wash); border:1px solid var(--border); padding:5px 12px; font-size:0.8rem;">{{ summary.consent_items }} consent</span>
+    {% endif %}
 
-    <a href="/export/meeting/{{ meeting.id }}" class="btn btn-ghost" style="font-size:0.75rem; padding:5px 12px;">Export CSV</a>
+    <a href="/export/meeting/{{ meeting.id }}" class="btn btn-ghost" style="font-size:0.75rem; padding:4px 12px;">Export CSV</a>
     {% for doc in docs %}
-    <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ doc.filename }}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem; padding:5px 12px;">
+    <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ doc.filename }}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem; padding:4px 12px;">
         {% if doc.doc_type == 'minutes' %}Minutes{% elif doc.doc_type == 'quick_results' %}Quick Results{% else %}{{ doc.doc_type }}{% endif %}
     </a>
     {% endfor %}
@@ -42,7 +48,7 @@
 
 <!-- Personnel actions -->
 {% if other_actions %}
-<div class="card mb-10">
+<div class="card" style="margin-bottom:32px;">
     <div class="card-header">
         <span class="section-title">Personnel Actions ({{ other_actions|length }})</span>
     </div>
@@ -71,70 +77,66 @@
 </div>
 {% endif %}
 
-<!-- Agenda items -->
+<!-- Agenda items as a table for better scannability -->
 <div class="card">
     <div class="card-header">
         <span class="section-title">Agenda Items</span>
     </div>
-
-    {% for item in items %}
-    <div class="agenda-row">
-        <div style="display:flex; align-items:flex-start; gap:20px;">
-            <div style="flex-shrink:0; width:52px; text-align:right;">
-                <span class="item-num">#{{ item.item_number }}{{ item.sub_item or '' }}</span>
-            </div>
-
-            <div style="flex:1; min-width:0;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">
-                    <!-- Left: description -->
-                    <div style="min-width:0;">
-                        {% if item.department %}
-                        <a href="/department/{{ item.department }}" class="item-dept" style="text-decoration:none;">{{ item.department }}</a>
-                        {% endif %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:50px;">#</th>
+                    <th>Department</th>
+                    <th>Description</th>
+                    <th>Vendor</th>
+                    <th class="right">Amount</th>
+                    <th class="center">Vote</th>
+                    <th style="width:40px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr{% if item.dissenting_votes %} style="background:var(--red-bg);"{% endif %}>
+                    <td class="num" style="text-align:left; font-weight:700; color:var(--text-3);">{{ item.item_number }}{{ item.sub_item or '' }}</td>
+                    <td style="font-size:0.75rem; white-space:nowrap;">
+                        {% if item.department %}<a href="/department/{{ item.department }}">{{ item.department[:30] }}</a>{% endif %}
                         {% if item.item_type and item.item_type != 'other' %}
-                        <span class="badge badge-sm" style="background:var(--c-grey-100); color:var(--c-grey-700); margin-left:4px; vertical-align:middle;">{{ item.item_type }}</span>
+                        <span class="badge badge-sm" style="background:var(--border-lt); color:var(--text-2); margin-left:2px;">{{ item.item_type }}</span>
                         {% endif %}
-
-                        <div class="item-desc" style="margin-top:4px;">{{ item.description[:400] if item.description else '' }}{% if item.description and item.description|length > 400 %}...{% endif %}</div>
-
-                        {% if item.vendor %}
-                        <div class="item-vendor" style="margin-top:4px;">
-                            Vendor:&nbsp;<a href="/vendor/{{ item.vendor }}" style="color:var(--c-accent); font-weight:600;">{{ item.vendor }}</a>
+                    </td>
+                    <td style="font-size:0.8125rem; max-width:400px;">
+                        <div style="overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                            {{ item.description[:300] if item.description else '' }}
                         </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Right: amount / outcome / pdf -->
-                    <div style="flex-shrink:0; text-align:right;">
-                        {% if item.amount %}
-                        <div class="item-amount">{{ item.amount|currency }}</div>
-                        {% endif %}
-
+                    </td>
+                    <td style="font-size:0.75rem;">
+                        {% if item.vendor %}<a href="/vendor/{{ item.vendor }}">{{ item.vendor[:30] }}</a>{% endif %}
+                    </td>
+                    <td class="num bold">{{ item.amount|currency }}</td>
+                    <td class="center" style="white-space:nowrap;">
                         {% if item.outcome %}
-                        <span class="badge badge-{{ item.outcome }}" style="margin-top:4px;">{{ item.outcome }}</span>
+                        <span class="badge badge-{{ item.outcome }}">{{ item.outcome }}</span>
                         {% endif %}
-
-                        {% if item.pdf_filename %}
-                        <div style="margin-top:4px;">
-                            <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ item.pdf_filename }}" target="_blank" class="item-pdf">
-                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                PDF
-                            </a>
+                        {% if item.dissenting_votes %}
+                        <div class="dissent-note" style="margin-top:2px; font-size:0.625rem; justify-content:center;">
+                            <svg fill="currentColor" viewBox="0 0 20 20" style="width:10px;height:10px;"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            {{ item.dissenting_votes }}
                         </div>
                         {% endif %}
-                    </div>
-                </div>
-
-                {% if item.dissenting_votes %}
-                <div class="dissent-note" style="margin-top:8px;">
-                    <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                    {{ item.dissenting_votes }} voted no
-                </div>
-                {% endif %}
-            </div>
-        </div>
+                    </td>
+                    <td>
+                        {% if item.pdf_filename %}
+                        <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ item.pdf_filename }}" target="_blank" class="item-pdf">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% endfor %}
 </div>
 
 {% endblock %}

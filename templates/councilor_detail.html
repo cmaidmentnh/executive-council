@@ -2,7 +2,7 @@
 {% block title %}{{ councilor.name }} — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="mb-8">
+<div style="margin-bottom:32px;">
     <a href="/councilors" class="back-link">&larr; All Councilors</a>
     <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
         <h1 class="page-title">{{ councilor.name }}</h1>
@@ -11,38 +11,45 @@
     <p class="page-sub">District {{ councilor.district }}</p>
 </div>
 
-<!-- Terms -->
-<div class="card mb-6">
-    <div class="card-body">
-        <div class="section-title mb-4">Terms of Service</div>
-        <div style="display:flex; flex-wrap:wrap; gap:10px;">
-            {% for t in terms %}
-            <div style="background:var(--c-bg); border:1px solid var(--c-border-lt); border-radius:6px; padding:8px 14px;">
-                <div class="mono text-sm" style="font-weight:600; color:var(--c-navy);">{{ t.start_date|short_date }} &rarr; {{ t.end_date|short_date if t.end_date else 'Present' }}</div>
-                <div class="text-xs text-muted">District {{ t.district }}</div>
-                {% if t.notes %}<div class="text-xs text-muted" style="margin-top:2px;">{{ t.notes }}</div>{% endif %}
+<!-- Terms + Voting side by side -->
+<div class="two-col" style="margin-bottom:32px;">
+    <!-- Terms -->
+    <div class="card">
+        <div class="card-header">
+            <span class="section-title">Terms of Service</span>
+        </div>
+        <div class="card-body">
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                {% for t in terms %}
+                <div style="background:var(--bg-wash); border:1px solid var(--border-lt); border-radius:6px; padding:8px 14px;">
+                    <div class="mono" style="font-size:0.8125rem; font-weight:600; color:var(--navy);">{{ t.start_date|short_date }} &rarr; {{ t.end_date|short_date if t.end_date else 'Present' }}</div>
+                    <div style="font-size:0.7rem; color:var(--text-3);">District {{ t.district }}</div>
+                    {% if t.notes %}<div style="font-size:0.7rem; color:var(--text-3); margin-top:2px;">{{ t.notes }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Voting Record -->
+    <div class="card">
+        <div class="card-header">
+            <span class="section-title">Voting Record</span>
+        </div>
+        <div class="card-body">
+            {% set total = vote_summary|map(attribute='cnt')|sum %}
+            {% for v in vote_summary %}
+            <div class="vote-bar-wrap">
+                <div class="vote-bar-header">
+                    <span class="vote-bar-label {{ v.vote }}">{{ v.vote }}</span>
+                    <span class="vote-bar-value">{{ "{:,}".format(v.cnt) }} <span>({{ "%.1f"|format(v.cnt / total * 100) if total else 0 }}%)</span></span>
+                </div>
+                <div class="vote-bar-track">
+                    <div class="vote-bar-fill {{ v.vote }}" style="width: {{ (v.cnt / total * 100) if total else 0 }}%;"></div>
+                </div>
             </div>
             {% endfor %}
         </div>
-    </div>
-</div>
-
-<!-- Voting Record -->
-<div class="card mb-8">
-    <div class="card-body">
-        <div class="section-title mb-5">Voting Record</div>
-        {% set total = vote_summary|map(attribute='cnt')|sum %}
-        {% for v in vote_summary %}
-        <div class="vote-bar-wrap">
-            <div class="vote-bar-header">
-                <span class="vote-bar-label {{ v.vote }}">{{ v.vote }}</span>
-                <span class="vote-bar-value">{{ "{:,}".format(v.cnt) }} <span>({{ "%.1f"|format(v.cnt / total * 100) if total else 0 }}%)</span></span>
-            </div>
-            <div class="vote-bar-track">
-                <div class="vote-bar-fill {{ v.vote }}" style="width: {{ (v.cnt / total * 100) if total else 0 }}%;"></div>
-            </div>
-        </div>
-        {% endfor %}
     </div>
 </div>
 
@@ -50,7 +57,7 @@
 {% if dissents %}
 <div class="card">
     <div class="card-header">
-        <div class="section-title">Dissenting Votes <span class="text-muted">({{ dissents|length }}{% if dissents|length == 200 %}+{% endif %})</span></div>
+        <span class="section-title">Dissenting Votes ({{ dissents|length }}{% if dissents|length == 200 %}+{% endif %})</span>
     </div>
     <div class="table-wrap">
         <table class="data-table">

@@ -24,7 +24,7 @@
 </form>
 
 {% if query %}
-<p class="text-sm text-muted mb-4">{{ "{:,}".format(total) }} results for "<strong style="color:var(--c-text-mid);">{{ query }}</strong>"{% if item_type %} ({{ item_type }}){% endif %}</p>
+<p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">{{ "{:,}".format(total) }} results for "<strong style="color:var(--text-2);">{{ query }}</strong>"{% if item_type %} ({{ item_type }}){% endif %}</p>
 
 {% if results %}
 <div class="card">
@@ -44,7 +44,7 @@
                 {% endif %}
                 <div class="item-desc">{{ r.description[:300] if r.description else '' }}{% if r.description and r.description|length > 300 %}...{% endif %}</div>
                 {% if r.vendor %}
-                <div class="item-vendor">Vendor: <a href="/vendor/{{ r.vendor }}" style="color:var(--c-accent); font-weight:600;">{{ r.vendor }}</a></div>
+                <div class="item-vendor">Vendor: <a href="/vendor/{{ r.vendor }}" style="color:var(--blue); font-weight:600;">{{ r.vendor }}</a></div>
                 {% endif %}
             </div>
             {% if r.amount %}

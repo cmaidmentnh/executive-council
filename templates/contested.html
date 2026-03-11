@@ -41,8 +41,8 @@
                     <td class="center"><span class="badge badge-{{ a.outcome or 'approved' }}">{{ a.outcome or '?' }}</span></td>
                     <td>
                         <span style="display:inline-flex; align-items:center; gap:4px;">
-                            <svg style="width:14px; height:14px; color:var(--c-red);" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                            <span class="mono text-xs" style="font-weight:600; color:var(--c-red);">{{ a.dissenting_votes }}</span>
+                            <svg style="width:14px; height:14px; color:var(--red);" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            <span class="mono" style="font-size:0.75rem; font-weight:600; color:var(--red);">{{ a.dissenting_votes }}</span>
                         </span>
                     </td>
                 </tr>

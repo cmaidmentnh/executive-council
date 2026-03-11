@@ -4,73 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}NH Executive Council{% endblock %}</title>
-
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Design System -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
-
-    <!-- Tailwind utilities (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-
-    <!-- Skip-link for accessibility -->
-    <a href="#main" class="visually-hidden">Skip to content</a>
-
-    <!-- Site Navigation -->
     <header class="site-nav">
         <div class="wrap">
-            <!-- Logo -->
             <a href="/" class="site-logo">
-                <div class="logo-icon">
-                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M3 21h18M3 7l9-4 9 4M6 7v10M18 7v10M9 21V11h6v10"/>
-                    </svg>
-                </div>
                 <div>
-                    <div class="logo-text">Executive Council</div>
-                    <div class="logo-sub">New Hampshire</div>
+                    <div class="logo-text">NH Executive Council</div>
                 </div>
             </a>
-
-            <!-- Mobile toggle -->
-            <button class="nav-toggle" aria-label="Toggle Menu" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+            <button class="nav-toggle" aria-label="Menu" onclick="document.querySelector('.nav-links').classList.toggle('open')">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-
-            <!-- Links -->
             <nav class="nav-links">
-                <a href="/"            class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">Dashboard</a>
-                <a href="/meetings"    class="nav-link {% if request.endpoint in ('meetings','meeting_detail') %}active{% endif %}">Meetings</a>
-                <a href="/councilors"  class="nav-link {% if request.endpoint in ('councilors','councilor_detail') %}active{% endif %}">Councilors</a>
-                <a href="/vendors"     class="nav-link {% if request.endpoint in ('vendors','vendor_detail') %}active{% endif %}">Vendors</a>
+                <a href="/meetings" class="nav-link {% if request.endpoint in ('meetings','meeting_detail') %}active{% endif %}">Meetings</a>
+                <a href="/councilors" class="nav-link {% if request.endpoint in ('councilors','councilor_detail') %}active{% endif %}">Councilors</a>
+                <a href="/vendors" class="nav-link {% if request.endpoint in ('vendors','vendor_detail') %}active{% endif %}">Vendors</a>
                 <a href="/departments" class="nav-link {% if request.endpoint in ('departments','department_detail') %}active{% endif %}">Departments</a>
                 <a href="/nominations" class="nav-link {% if request.endpoint == 'nominations' %}active{% endif %}">Personnel</a>
-                <a href="/contested"   class="nav-link {% if request.endpoint == 'contested' %}active{% endif %}">Contested</a>
-                <a href="/search"      class="nav-link {% if request.endpoint == 'search' %}active{% endif %}">
-                    <svg fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    Search
+                <a href="/contested" class="nav-link {% if request.endpoint == 'contested' %}active{% endif %}">Contested</a>
+                <a href="/search" class="nav-link {% if request.endpoint == 'search' %}active{% endif %}">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 </a>
             </nav>
         </div>
     </header>
-
-    <!-- Page Content -->
-    <main id="main" class="wrap page">
+    <main class="wrap page">
         {% block content %}{% endblock %}
     </main>
-
-    <!-- Footer -->
     <footer class="site-footer">
         <div class="wrap">
-            <div>Data sourced from the&nbsp;<a href="https://www.sos.nh.gov" target="_blank">NH Secretary of State</a> &middot; 333 meetings &middot; 2012&ndash;2026</div>
+            <div>Data from the <a href="https://www.sos.nh.gov">NH Secretary of State</a> &middot; 333 meetings &middot; 2012&ndash;2026</div>
             <div>33,000+ documents &middot; 180,000+ vote records</div>
         </div>
     </footer>
-
     {% block scripts %}{% endblock %}
 </body>
 </html>
