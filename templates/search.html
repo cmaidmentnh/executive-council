@@ -12,7 +12,7 @@
     <div class="flex items-center gap-2 max-w-2xl flex-wrap sm:flex-nowrap">
         <div class="relative flex-1 w-full">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" name="q" value="{{ query }}" placeholder="Search agenda items, vendors, departments..."
+            <input type="text" name="q" value="{{ query }}" placeholder="Search items, vendors, departments, nominees..."
                    class="form-input w-full pl-9" autofocus>
         </div>
         <select name="type" class="form-select" style="min-width:130px;">
@@ -85,10 +85,55 @@
 {% endif %}
 
 {% else %}
+{% if not personnel %}
 <div class="empty-state">
     <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <p class="text-slate-500">No results found for "{{ query }}"</p>
     <p class="text-sm text-slate-400 mt-1">Try a different search term or remove the type filter.</p>
+</div>
+{% endif %}
+{% endif %}
+
+{% if personnel %}
+<div class="card mt-8">
+    <div class="card-header">
+        <span class="card-title">Personnel Actions ({{ "{:,}".format(personnel_total) }})</span>
+        <a href="/nominations" class="card-link">All personnel &rarr;</a>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for p in personnel %}
+        <a href="/meeting/{{ p.meeting_id }}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 text-center" style="min-width:60px;">
+                    <div class="font-mono text-sm font-semibold text-blue-600">{{ p.mdate|compact_date }}</div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="badge
+                            {% if p.action_type == 'confirmation' %}badge-confirmed
+                            {% elif p.action_type == 'nomination' %}badge-nomination
+                            {% elif p.action_type == 'resignation' %}badge-resignation
+                            {% else %}badge-withdrawn{% endif %}">
+                            {{ p.action_type }}
+                        </span>
+                        {% if p.person_name %}
+                        <span class="text-sm font-semibold text-slate-900">{{ p.person_name }}</span>
+                        {% endif %}
+                        {% if p.person_city %}
+                        <span class="text-xs text-slate-400">{{ p.person_city }}</span>
+                        {% endif %}
+                    </div>
+                    {% if p.position_title %}
+                    <div class="text-[13px] text-slate-600 mt-1">{{ p.position_title }}</div>
+                    {% endif %}
+                </div>
+                {% if p.outcome %}
+                <span class="badge badge-{{ p.outcome }} flex-shrink-0">{{ p.outcome }}</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 

@@ -672,7 +672,8 @@ def search():
     if not q or len(q) < 3:
         db.close()
         return render_template('search.html', results=[], query=q, item_type=item_type,
-                               total=0, page=1, per_page=per_page)
+                               total=0, page=1, per_page=per_page,
+                               personnel=[], personnel_total=0)
 
     where = "(ai.description LIKE ? OR ai.vendor LIKE ? OR ai.department LIKE ?)"
     params = [f'%{q}%', f'%{q}%', f'%{q}%']
@@ -695,9 +696,27 @@ def search():
         WHERE {where}
     """, params).fetchone()[0]
 
+    # Also search personnel actions (person_name, position_title, description)
+    personnel = db.execute("""
+        SELECT ca.*, m.meeting_date as mdate
+        FROM council_actions ca
+        JOIN meetings m ON m.id = ca.meeting_id
+        WHERE ca.action_type IN ('confirmation', 'nomination', 'resignation')
+          AND (ca.person_name LIKE ? OR ca.position_title LIKE ? OR ca.description LIKE ?)
+        ORDER BY m.meeting_date DESC
+        LIMIT 20
+    """, [f'%{q}%', f'%{q}%', f'%{q}%']).fetchall()
+
+    personnel_total = db.execute("""
+        SELECT COUNT(*) FROM council_actions ca
+        WHERE ca.action_type IN ('confirmation', 'nomination', 'resignation')
+          AND (ca.person_name LIKE ? OR ca.position_title LIKE ? OR ca.description LIKE ?)
+    """, [f'%{q}%', f'%{q}%', f'%{q}%']).fetchone()[0]
+
     db.close()
     return render_template('search.html', results=results, query=q, item_type=item_type,
-                           total=total, page=page, per_page=per_page)
+                           total=total, page=page, per_page=per_page,
+                           personnel=personnel, personnel_total=personnel_total)
 
 
 @app.route('/contested')
