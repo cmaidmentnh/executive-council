@@ -33,11 +33,11 @@
             </thead>
             <tbody>
                 {% for a in actions %}
-                <tr class="row-contested">
-                    <td class="whitespace-nowrap"><a href="/meeting/{{ a.meeting_id }}">{{ a.mdate|compact_date }}</a></td>
+                <tr class="row-contested clickable-row" onclick="window.location='{% if a.item_id %}/item/{{ a.item_id }}{% else %}/meeting/{{ a.meeting_id }}{% endif %}'">
+                    <td class="whitespace-nowrap"><a href="/meeting/{{ a.meeting_id }}" onclick="event.stopPropagation()">{{ a.mdate|compact_date }}</a></td>
                     <td class="font-mono text-xs font-bold text-slate-400">#{{ a.item_number or '?' }}</td>
                     <td style="max-width:300px;" class="text-[13px] truncate">{{ a.description[:200] if a.description else '' }}</td>
-                    <td class="text-xs">{% if a.vendor %}<a href="/vendor/{{ a.vendor }}">{{ a.vendor[:25] }}</a>{% endif %}</td>
+                    <td class="text-xs">{% if a.vendor %}<a href="/vendor/{{ a.vendor }}" onclick="event.stopPropagation()">{{ a.vendor[:25] }}</a>{% endif %}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ a.amount|currency }}</td>
                     <td class="text-center"><span class="badge badge-{{ a.outcome or 'approved' }}">{{ a.outcome or '?' }}</span></td>
                     <td>

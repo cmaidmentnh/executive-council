@@ -153,7 +153,7 @@
             </div>
             <div class="divide-y divide-slate-100">
                 {% for v in recent_contested %}
-                <a href="/meeting/{{ v.meeting_id }}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+                <a href="{% if v.item_id %}/item/{{ v.item_id }}{% else %}/meeting/{{ v.meeting_id }}{% endif %}" class="block px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
                     <div class="flex justify-between items-center">
                         <span class="font-mono text-xs text-slate-400">{{ v.meeting_date|compact_date }} #{{ v.item_number or '?' }}</span>
                         {% if v.outcome %}
@@ -163,7 +163,7 @@
                     <div class="text-sm text-slate-600 mt-1 truncate">{{ v.description[:140] if v.description else '' }}</div>
                     <div class="dissent-tag mt-1">
                         <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                        {{ v.dissenting_votes }}
+                        {{ v.dissenting_votes|clean_dissenters }}
                     </div>
                 </a>
                 {% endfor %}

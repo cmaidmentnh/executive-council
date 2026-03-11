@@ -25,7 +25,11 @@
     </div>
 </form>
 
-{% if query %}
+{% if query and query|length < 3 %}
+<div class="empty-state">
+    <p class="text-slate-500">Please enter at least 3 characters to search.</p>
+</div>
+{% elif query %}
 <p class="text-sm text-slate-400 mb-4">
     {{ "{:,}".format(total) }} results for "<strong class="text-slate-600">{{ query }}</strong>"{% if item_type %} ({{ item_type }}){% endif %}
 </p>

@@ -153,7 +153,9 @@ def index():
     # Recent contested votes
     recent_contested = db.execute("""
         SELECT ca.description, ca.dissenting_votes, ca.outcome, ca.item_number,
-               m.meeting_date, m.id as meeting_id
+               m.meeting_date, m.id as meeting_id,
+               (SELECT MIN(a2.id) FROM agenda_items a2
+                WHERE a2.meeting_id = ca.meeting_id AND a2.item_number = ca.item_number) as item_id
         FROM council_actions ca
         JOIN meetings m ON m.id = ca.meeting_id
         WHERE ca.dissenting_votes IS NOT NULL AND ca.dissenting_votes <> ''
@@ -367,10 +369,13 @@ def councilor_detail(councilor_id):
     dissents = db.execute(f"""
         SELECT cvr.meeting_date, cvr.meeting_id, cvr.item_number,
                ca.description, ca.outcome,
-               ai.vendor, ai.amount
+               ai.vendor, ai.amount, ai.id as item_id
         FROM councilor_vote_records cvr
         JOIN council_actions ca ON ca.id = cvr.action_id
-        LEFT JOIN agenda_items ai ON ai.meeting_id = cvr.meeting_id AND ai.item_number = cvr.item_number
+        LEFT JOIN agenda_items ai ON ai.id = (
+            SELECT MIN(a2.id) FROM agenda_items a2
+            WHERE a2.meeting_id = cvr.meeting_id AND a2.item_number = cvr.item_number
+        )
         WHERE cvr.councilor_id IN ({ph}) AND cvr.vote = 'no'
         ORDER BY cvr.meeting_date DESC
         LIMIT 200
@@ -420,6 +425,8 @@ def vendors():
 @app.route('/vendor/<path:vendor_name>')
 def vendor_detail(vendor_name):
     db = get_db()
+    page = int(request.args.get('page', 1))
+    per_page = 50
     # Normalize the incoming name so "Pike Industries, Inc." and "Pike Industries Inc." both work
     normalized = normalize_vendor(vendor_name)
     vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
@@ -432,15 +439,20 @@ def vendor_detail(vendor_name):
             AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
         WHERE {vnorm} = ?
         ORDER BY m.meeting_date DESC
-    """, (normalized,)).fetchall()
+        LIMIT ? OFFSET ?
+    """, (normalized, per_page, (page - 1) * per_page)).fetchall()
 
-    if not items:
+    if not items and page == 1:
         abort(404)
 
-    total_value = sum(i['amount'] or 0 for i in items)
+    total = db.execute(f"SELECT COUNT(*) FROM agenda_items ai WHERE {vnorm} = ?",
+                       (normalized,)).fetchone()[0]
+    total_value = db.execute(f"SELECT SUM(ai.amount) FROM agenda_items ai WHERE {vnorm} = ? AND ai.amount > 0",
+                             (normalized,)).fetchone()[0] or 0
     db.close()
     return render_template('vendor_detail.html', vendor_name=normalized,
-                           items=items, total_value=total_value)
+                           items=items, total_value=total_value,
+                           total=total, page=page, per_page=per_page)
 
 
 @app.route('/departments')
@@ -466,12 +478,13 @@ def department_detail(dept_name):
     page = int(request.args.get('page', 1))
     per_page = 50
 
-    # Top vendors for this department
-    top_vendors = db.execute("""
-        SELECT vendor, COUNT(*) as item_count, SUM(amount) as total_amount
+    # Top vendors for this department (normalized names)
+    vnorm = VENDOR_NORM_SQL.format(col='vendor')
+    top_vendors = db.execute(f"""
+        SELECT {vnorm} as vendor, COUNT(*) as item_count, SUM(amount) as total_amount
         FROM agenda_items
         WHERE department = ? AND vendor IS NOT NULL AND amount > 0
-        GROUP BY vendor ORDER BY total_amount DESC LIMIT 15
+        GROUP BY {vnorm} ORDER BY total_amount DESC LIMIT 15
     """, (dept_name,)).fetchall()
 
     # Item type breakdown
@@ -566,7 +579,7 @@ def contested():
     # Join to FIRST agenda_item only (MIN(ai.id)) to avoid sub-item duplication
     actions = db.execute(f"""
         SELECT ca.*, m.meeting_date as mdate,
-               ai.vendor, ai.amount, ai.item_type
+               ai.vendor, ai.amount, ai.item_type, ai.id as item_id
         FROM council_actions ca
         JOIN meetings m ON m.id = ca.meeting_id
         LEFT JOIN agenda_items ai ON ai.id = (
@@ -611,7 +624,9 @@ def nominations():
         params.append(action_type)
 
     actions = db.execute(f"""
-        SELECT ca.*, m.meeting_date as mdate
+        SELECT ca.*, m.meeting_date as mdate,
+               (SELECT MIN(a2.id) FROM agenda_items a2
+                WHERE a2.meeting_id = ca.meeting_id AND a2.item_number = ca.item_number) as item_id
         FROM council_actions ca
         JOIN meetings m ON m.id = ca.meeting_id
         WHERE {where}
@@ -679,6 +694,37 @@ def export_meeting_csv(meeting_id):
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename=gc_{meeting["meeting_date"]}.csv'}
     )
+
+
+_footer_cache = {}
+_footer_cache_time = 0
+
+@app.context_processor
+def footer_stats():
+    """Make basic counts available to all templates for the footer. Cached for 1 hour."""
+    import time
+    global _footer_cache, _footer_cache_time
+    now = time.time()
+    if _footer_cache and (now - _footer_cache_time) < 3600:
+        return _footer_cache
+    db = get_db()
+    stats = {
+        'footer_meetings': db.execute("SELECT COUNT(*) FROM meetings").fetchone()[0],
+        'footer_docs': db.execute("SELECT COUNT(*) FROM item_downloads").fetchone()[0],
+        'footer_votes': db.execute("SELECT COUNT(*) FROM councilor_vote_records").fetchone()[0],
+    }
+    years = db.execute("SELECT MIN(SUBSTR(meeting_date,1,4)), MAX(SUBSTR(meeting_date,1,4)) FROM meetings").fetchone()
+    stats['footer_year_start'] = years[0]
+    stats['footer_year_end'] = years[1]
+    db.close()
+    _footer_cache = stats
+    _footer_cache_time = now
+    return stats
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 
 if __name__ == '__main__':

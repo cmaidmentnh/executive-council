@@ -36,8 +36,8 @@
             </thead>
             <tbody>
                 {% for a in actions %}
-                <tr class="{% if a.dissenting_votes %}row-contested{% endif %}">
-                    <td class="whitespace-nowrap"><a href="/meeting/{{ a.meeting_id }}">{{ a.mdate|compact_date }}</a></td>
+                <tr class="{% if a.dissenting_votes %}row-contested{% endif %} clickable-row" onclick="window.location='{% if a.item_id %}/item/{{ a.item_id }}{% else %}/meeting/{{ a.meeting_id }}{% endif %}'">
+                    <td class="whitespace-nowrap"><a href="/meeting/{{ a.meeting_id }}" onclick="event.stopPropagation()">{{ a.mdate|compact_date }}</a></td>
                     <td>
                         <span class="badge
                             {% if a.action_type == 'confirmation' %}badge-confirmed
@@ -58,7 +58,7 @@
                         {% if a.dissenting_votes %}
                         <div class="dissent-tag mt-1 justify-center text-[10px]">
                             <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                            {{ a.dissenting_votes }}
+                            {{ a.dissenting_votes|clean_dissenters }}
                         </div>
                         {% endif %}
                     </td>

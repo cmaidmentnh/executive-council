@@ -43,8 +43,8 @@
     <!-- Footer -->
     <footer class="site-footer">
         <div class="container flex flex-col sm:flex-row justify-between items-center gap-2 text-center sm:text-left">
-            <div>Data from the <a href="https://www.sos.nh.gov">NH Secretary of State</a> &middot; 333 meetings &middot; 2012&ndash;2026</div>
-            <div>33,000+ documents &middot; 180,000+ vote records</div>
+            <div>Data from the <a href="https://www.sos.nh.gov">NH Secretary of State</a> &middot; {{ "{:,}".format(footer_meetings) }} meetings &middot; {{ footer_year_start }}&ndash;{{ footer_year_end }}</div>
+            <div>{{ "{:,}".format(footer_docs) }} documents &middot; {{ "{:,}".format(footer_votes) }} vote records</div>
         </div>
     </footer>
 
