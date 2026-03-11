@@ -36,7 +36,7 @@
                         <a href="/item/{{ i.id }}" class="font-mono text-xs font-bold text-slate-400 no-underline hover:text-blue-600" onclick="event.stopPropagation()">#{{ i.item_number }}{{ i.sub_item or '' }}</a>
                     </td>
                     <td class="text-xs">
-                        {% if i.department %}<a href="/department/{{ i.department|norm_dept }}" onclick="event.stopPropagation()">{{ i.department|norm_dept }}</a>{% endif %}
+                        {% if i.department %}<a href="/department/{{ i.department|norm_dept|urlencode }}" onclick="event.stopPropagation()">{{ i.department|norm_dept }}</a>{% endif %}
                     </td>
                     <td style="max-width:400px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ i.amount|currency }}</td>

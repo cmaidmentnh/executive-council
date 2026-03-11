@@ -321,8 +321,14 @@ def item_detail(item_id):
                ca.id as action_id
         FROM agenda_items ai
         JOIN meetings m ON m.id = ai.meeting_id
-        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
-            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+              AND (ca2.sub_item IS NULL OR ca2.sub_item = '' OR ca2.sub_item = ai.sub_item)
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
         WHERE ai.id = ?
     """, (item_id,)).fetchone()
     if not item:
@@ -332,8 +338,14 @@ def item_detail(item_id):
     sub_items = db.execute("""
         SELECT ai.*, ca.outcome, ca.dissenting_votes
         FROM agenda_items ai
-        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
-            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+              AND (ca2.sub_item IS NULL OR ca2.sub_item = '' OR ca2.sub_item = ai.sub_item)
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
         WHERE ai.meeting_id = ? AND ai.item_number = ? AND ai.id != ?
         ORDER BY ai.sub_item
     """, (item['meeting_id'], item['item_number'], item_id)).fetchall()
@@ -489,8 +501,13 @@ def vendor_detail(vendor_name):
                ca.outcome, ca.dissenting_votes
         FROM agenda_items ai
         JOIN meetings m ON m.id = ai.meeting_id
-        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
-            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
         WHERE {vnorm} = ?
         ORDER BY m.meeting_date DESC
         LIMIT ? OFFSET ?
@@ -614,10 +631,14 @@ def items_browse():
     item_type = request.args.get('type', '')
     year = request.args.get('year', '')
     dept = request.args.get('dept', '')
+    search_q = request.args.get('q', '')
     per_page = 50
 
     where_parts = ['1=1']
     params = []
+    if search_q:
+        where_parts.append("(ai.description LIKE ? OR ai.vendor LIKE ?)")
+        params.extend([f'%{search_q}%', f'%{search_q}%'])
     if item_type:
         where_parts.append("ai.item_type = ?")
         params.append(item_type)
@@ -667,7 +688,7 @@ def items_browse():
     return render_template('items.html', items=items, total=total,
                            page=page, per_page=per_page,
                            item_type=item_type, year=year, dept=dept,
-                           years=years, types=types)
+                           search_q=search_q, years=years, types=types)
 
 
 @app.route('/search')
@@ -864,13 +885,20 @@ def export_meeting_csv(meeting_id):
         abort(404)
 
     items = db.execute("""
-        SELECT ai.item_number, ai.department, ai.description, ai.vendor,
+        SELECT ai.item_number, ai.sub_item, ai.department, ai.description, ai.vendor,
                ai.amount, ai.item_type, ca.outcome, ca.dissenting_votes
         FROM agenda_items ai
-        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
-            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+              AND (ca2.sub_item IS NULL OR ca2.sub_item = '' OR ca2.sub_item = ai.sub_item)
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
         WHERE ai.meeting_id = ?
-        ORDER BY CAST(CASE WHEN ai.item_number GLOB '[0-9]*' THEN ai.item_number ELSE '9999' END AS INTEGER)
+        ORDER BY CAST(CASE WHEN ai.item_number GLOB '[0-9]*' THEN ai.item_number ELSE '9999' END AS INTEGER),
+                 ai.item_number, ai.sub_item
     """, (meeting_id,)).fetchall()
 
     output = io.StringIO()

@@ -109,7 +109,7 @@
                     </td>
                     <td class="text-xs whitespace-nowrap">
                         {% if item.department %}
-                        <a href="/department/{{ item.department|norm_dept }}" onclick="event.stopPropagation()">{{ item.department|norm_dept }}</a>
+                        <a href="/department/{{ item.department|norm_dept|urlencode }}" onclick="event.stopPropagation()">{{ item.department|norm_dept }}</a>
                         {% endif %}
                         {% if item.item_type and item.item_type != 'other' %}
                         <span class="badge badge-type ml-1">{{ item.item_type }}</span>
@@ -122,7 +122,7 @@
                     </td>
                     <td class="text-xs">
                         {% if item.vendor %}
-                        <a href="/vendor/{{ item.vendor }}" onclick="event.stopPropagation()">{{ item.vendor[:30] }}</a>
+                        <a href="/vendor/{{ item.vendor|urlencode }}" onclick="event.stopPropagation()">{{ item.vendor[:30] }}</a>
                         {% endif %}
                     </td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900 whitespace-nowrap">{{ item.amount|currency }}</td>

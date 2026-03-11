@@ -79,7 +79,7 @@
                     <td class="whitespace-nowrap"><a href="/meeting/{{ d.meeting_id }}" onclick="event.stopPropagation()">{{ d.meeting_date|compact_date }}</a></td>
                     <td class="font-mono text-xs font-bold text-slate-400">#{{ d.item_number or '?' }}</td>
                     <td style="max-width:350px;" class="text-[13px] truncate">{{ d.description[:200] if d.description else '' }}</td>
-                    <td class="text-xs">{% if d.vendor %}<a href="/vendor/{{ d.vendor }}" onclick="event.stopPropagation()">{{ d.vendor[:25] }}</a>{% endif %}</td>
+                    <td class="text-xs">{% if d.vendor %}<a href="/vendor/{{ d.vendor|urlencode }}" onclick="event.stopPropagation()">{{ d.vendor[:25] }}</a>{% endif %}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ d.amount|currency }}</td>
                     <td class="text-center"><span class="badge badge-{{ d.outcome or 'approved' }}">{{ d.outcome or '?' }}</span></td>
                 </tr>

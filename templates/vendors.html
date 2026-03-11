@@ -38,7 +38,7 @@
             <tbody>
                 {% for v in vendors %}
                 <tr class="clickable-row" onclick="window.location='/vendor/{{ v.vendor|urlencode }}'">
-                    <td><a href="/vendor/{{ v.vendor }}">{{ v.vendor }}</a></td>
+                    <td><a href="/vendor/{{ v.vendor|urlencode }}">{{ v.vendor }}</a></td>
                     <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(v.item_count) }}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ v.total_amount|currency }}</td>
                     <td class="font-mono text-sm text-slate-500">{{ v.first_seen|compact_date }}</td>

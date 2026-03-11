@@ -33,7 +33,7 @@
                 <tbody>
                     {% for v in top_vendors %}
                     <tr>
-                        <td><a href="/vendor/{{ v.vendor }}">{{ v.vendor }}</a></td>
+                        <td><a href="/vendor/{{ v.vendor|urlencode }}">{{ v.vendor }}</a></td>
                         <td class="text-right font-mono text-sm text-slate-500">{{ v.item_count }}</td>
                         <td class="text-right font-mono text-sm font-bold text-slate-900">{{ v.total_amount|currency }}</td>
                     </tr>
@@ -100,7 +100,7 @@
                         <a href="/item/{{ i.id }}" class="font-mono text-xs font-bold text-slate-400 no-underline hover:text-blue-600" onclick="event.stopPropagation()">#{{ i.item_number }}{{ i.sub_item or '' }}</a>
                     </td>
                     <td style="max-width:350px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
-                    <td class="text-xs">{% if i.vendor %}<a href="/vendor/{{ i.vendor }}" onclick="event.stopPropagation()">{{ i.vendor[:30] }}</a>{% endif %}</td>
+                    <td class="text-xs">{% if i.vendor %}<a href="/vendor/{{ i.vendor|urlencode }}" onclick="event.stopPropagation()">{{ i.vendor[:30] }}</a>{% endif %}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ i.amount|currency }}</td>
                     <td class="text-center">
                         {% if i.outcome %}<span class="badge badge-{{ i.outcome }}">{{ i.outcome }}</span>{% endif %}

@@ -24,7 +24,7 @@
             <tbody>
                 {% for d in departments %}
                 <tr class="clickable-row" onclick="window.location='/department/{{ d.department|urlencode }}'">
-                    <td><a href="/department/{{ d.department }}">{{ d.department }}</a></td>
+                    <td><a href="/department/{{ d.department|urlencode }}">{{ d.department }}</a></td>
                     <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(d.item_count) }}</td>
                     <td class="text-right font-mono text-sm text-slate-500">{{ d.meetings }}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ d.total_amount|currency }}</td>

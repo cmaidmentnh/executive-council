@@ -67,7 +67,7 @@
         <div class="card">
             <div class="card-body py-4">
                 <div class="stat-label mb-1">Department</div>
-                <a href="/department/{{ item.department|norm_dept }}" class="text-sm font-semibold text-blue-600 hover:underline">{{ item.department|norm_dept }}</a>
+                <a href="/department/{{ item.department|norm_dept|urlencode }}" class="text-sm font-semibold text-blue-600 hover:underline">{{ item.department|norm_dept }}</a>
                 {% if item.sub_department %}
                 <div class="text-xs text-slate-400 mt-0.5">{{ item.sub_department }}</div>
                 {% endif %}
@@ -80,7 +80,7 @@
         <div class="card">
             <div class="card-body py-4">
                 <div class="stat-label mb-1">Vendor</div>
-                <a href="/vendor/{{ item.vendor }}" class="text-sm font-semibold text-blue-600 hover:underline">{{ item.vendor }}</a>
+                <a href="/vendor/{{ item.vendor|urlencode }}" class="text-sm font-semibold text-blue-600 hover:underline">{{ item.vendor }}</a>
                 {% if item.vendor_city or item.vendor_state %}
                 <div class="text-xs text-slate-400 mt-0.5">{{ item.vendor_city or '' }}{% if item.vendor_city and item.vendor_state %}, {% endif %}{{ item.vendor_state or '' }}</div>
                 {% endif %}

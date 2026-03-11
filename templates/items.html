@@ -6,12 +6,20 @@
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">All Items</h1>
-        <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} items{% if item_type %} ({{ item_type }}){% endif %}{% if year %} in {{ year }}{% endif %}{% if dept %} — {{ dept }}{% endif %}</p>
+        <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} items{% if search_q %} matching "{{ search_q }}"{% endif %}{% if item_type %} ({{ item_type }}){% endif %}{% if year %} in {{ year }}{% endif %}{% if dept %} — {{ dept }}{% endif %}</p>
     </div>
+    <form action="/items" method="get" class="flex items-center gap-2">
+        {% if item_type %}<input type="hidden" name="type" value="{{ item_type }}">{% endif %}
+        {% if year %}<input type="hidden" name="year" value="{{ year }}">{% endif %}
+        {% if dept %}<input type="hidden" name="dept" value="{{ dept }}">{% endif %}
+        <input type="text" name="q" value="{{ search_q }}" placeholder="Search items..." class="form-input" style="width:200px;">
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    </form>
 </div>
 
 <!-- Filters -->
 <form action="/items" method="get" class="flex items-center gap-2 flex-wrap mb-6">
+    {% if search_q %}<input type="hidden" name="q" value="{{ search_q }}">{% endif %}
     <select name="type" class="form-select text-xs py-1.5" style="min-width:130px;">
         <option value="">All Types</option>
         {% for t in types %}
@@ -26,7 +34,7 @@
     </select>
     <input type="text" name="dept" value="{{ dept }}" placeholder="Department..." class="form-input text-xs py-1.5" style="width:220px;">
     <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-    {% if item_type or year or dept %}
+    {% if item_type or year or dept or search_q %}
     <a href="/items" class="btn btn-outline btn-sm">Clear</a>
     {% endif %}
 </form>
@@ -54,11 +62,11 @@
                     </td>
                     <td class="font-mono text-xs font-bold text-slate-400">{{ i.item_number }}{{ i.sub_item or '' }}</td>
                     <td class="text-xs whitespace-nowrap">
-                        {% if i.department %}<a href="/department/{{ i.department|norm_dept }}" onclick="event.stopPropagation()">{{ (i.department|norm_dept)[:25] }}</a>{% endif %}
+                        {% if i.department %}<a href="/department/{{ i.department|norm_dept|urlencode }}" onclick="event.stopPropagation()">{{ (i.department|norm_dept)[:25] }}</a>{% endif %}
                     </td>
                     <td style="max-width:350px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
                     <td class="text-xs">
-                        {% if i.vendor %}<a href="/vendor/{{ i.vendor }}" onclick="event.stopPropagation()">{{ i.vendor[:25] }}</a>{% endif %}
+                        {% if i.vendor %}<a href="/vendor/{{ i.vendor|urlencode }}" onclick="event.stopPropagation()">{{ i.vendor[:25] }}</a>{% endif %}
                     </td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900 whitespace-nowrap">{{ i.amount|currency }}</td>
                     <td class="text-center">
@@ -87,11 +95,11 @@
 {% if total > per_page %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?type={{ item_type }}&year={{ year }}&dept={{ dept }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    <a href="?q={{ search_q }}&type={{ item_type }}&year={{ year }}&dept={{ dept }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
     {% if page * per_page < total %}
-    <a href="?type={{ item_type }}&year={{ year }}&dept={{ dept }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    <a href="?q={{ search_q }}&type={{ item_type }}&year={{ year }}&dept={{ dept }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
     {% endif %}
 </div>
 {% endif %}
