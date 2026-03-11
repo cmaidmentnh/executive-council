@@ -31,6 +31,37 @@ def normalize_vendor(name):
     return name
 
 
+import re
+
+# Known councilor name corrections
+_NAME_FIXES = {
+    'Volinky': 'Volinsky',
+    'Steven': 'Stevens',
+}
+
+def normalize_dissent_names(raw):
+    """Parse raw dissenting_votes string into a clean, deduplicated list of last names."""
+    if not raw:
+        return []
+    names = []
+    for part in raw.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        # Remove prefixes
+        part = re.sub(r'^Councilors?\s+', '', part)
+        # Remove suffixes like "abstaining", "recused", "recusing himself", "originally", "all"
+        part = re.sub(r'\s+(abstain(ing|ed)?|recused?\s*(himself)?|recusing\s+himself|originally|all|seconded by .*)$', '', part, flags=re.IGNORECASE)
+        part = part.strip()
+        if not part:
+            continue
+        # Apply known fixes
+        part = _NAME_FIXES.get(part, part)
+        if part and part not in names:
+            names.append(part)
+    return names
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -39,6 +70,13 @@ def get_db():
 
 
 # ─── TEMPLATE FILTERS ───
+
+@app.template_filter('clean_dissenters')
+def clean_dissenters_filter(value):
+    """Template filter to display clean dissenter names."""
+    names = normalize_dissent_names(value)
+    return ', '.join(names) if names else value or ''
+
 
 @app.template_filter('currency')
 def currency_filter(value):
@@ -288,13 +326,21 @@ def councilors():
         FROM councilors c WHERE c.end_date IS NULL ORDER BY c.district
     """).fetchall()
 
-    historical = db.execute("""
-        SELECT c.*,
-               (SELECT COUNT(*) FROM councilor_vote_records WHERE councilor_id = c.id AND vote = 'yes') as yes_votes,
-               (SELECT COUNT(*) FROM councilor_vote_records WHERE councilor_id = c.id AND vote = 'no') as no_votes,
-               (SELECT COUNT(*) FROM councilor_vote_records WHERE councilor_id = c.id) as total_votes
-        FROM councilors c WHERE c.end_date IS NOT NULL ORDER BY c.end_date DESC
+    # Merge historical councilors by name (combine terms)
+    hist_raw = db.execute("""
+        SELECT c.name, c.party, MIN(c.district) as district,
+               MIN(c.id) as id,
+               MIN(c.start_date) as start_date, MAX(c.end_date) as end_date,
+               SUM((SELECT COUNT(*) FROM councilor_vote_records WHERE councilor_id = c.id AND vote = 'yes')) as yes_votes,
+               SUM((SELECT COUNT(*) FROM councilor_vote_records WHERE councilor_id = c.id AND vote = 'no')) as no_votes,
+               SUM((SELECT COUNT(*) FROM councilor_vote_records WHERE councilor_id = c.id)) as total_votes
+        FROM councilors c WHERE c.end_date IS NOT NULL
+        GROUP BY c.name
+        ORDER BY MAX(c.end_date) DESC
     """).fetchall()
+    # Exclude anyone who is also a current councilor (they show in 'current' section)
+    current_names = {c['name'] for c in current}
+    historical = [h for h in hist_raw if h['name'] not in current_names]
 
     db.close()
     return render_template('councilors.html', current=current, historical=historical)
@@ -506,16 +552,27 @@ def contested():
 
     where = "ca.dissenting_votes IS NOT NULL AND ca.dissenting_votes <> ''"
     params = []
+    # Reverse-lookup: if the normalized name has a known fix, also search the original
+    _REVERSE_FIXES = {v: k for k, v in _NAME_FIXES.items()}
     if councilor:
-        where += " AND ca.dissenting_votes LIKE ?"
-        params.append(f'%{councilor}%')
+        original = _REVERSE_FIXES.get(councilor)
+        if original:
+            where += " AND (ca.dissenting_votes LIKE ? OR ca.dissenting_votes LIKE ?)"
+            params.extend([f'%{councilor}%', f'%{original}%'])
+        else:
+            where += " AND ca.dissenting_votes LIKE ?"
+            params.append(f'%{councilor}%')
 
+    # Join to FIRST agenda_item only (MIN(ai.id)) to avoid sub-item duplication
     actions = db.execute(f"""
         SELECT ca.*, m.meeting_date as mdate,
                ai.vendor, ai.amount, ai.item_type
         FROM council_actions ca
         JOIN meetings m ON m.id = ca.meeting_id
-        LEFT JOIN agenda_items ai ON ai.meeting_id = ca.meeting_id AND ai.item_number = ca.item_number
+        LEFT JOIN agenda_items ai ON ai.id = (
+            SELECT MIN(a2.id) FROM agenda_items a2
+            WHERE a2.meeting_id = ca.meeting_id AND a2.item_number = ca.item_number
+        )
         WHERE {where}
         ORDER BY m.meeting_date DESC
         LIMIT ? OFFSET ?
@@ -523,18 +580,15 @@ def contested():
 
     total = db.execute(f"SELECT COUNT(*) FROM council_actions ca WHERE {where}", params).fetchone()[0]
 
-    # Get all councilor names who have dissented for the filter
+    # Get all councilor names who have dissented — normalized and deduplicated
     dissenters = db.execute("""
         SELECT DISTINCT dissenting_votes FROM council_actions
         WHERE dissenting_votes IS NOT NULL AND dissenting_votes <> ''
     """).fetchall()
-    # Parse out individual names
     all_names = set()
     for row in dissenters:
-        for name in row['dissenting_votes'].split(','):
-            name = name.strip()
-            if name:
-                all_names.add(name)
+        for name in normalize_dissent_names(row['dissenting_votes']):
+            all_names.add(name)
     all_names = sorted(all_names)
 
     db.close()
