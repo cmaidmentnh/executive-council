@@ -39,6 +39,18 @@
     </div>
 </div>
 
+<!-- Spending by year chart -->
+{% if yearly_spending %}
+<div class="card mb-8">
+    <div class="card-header">
+        <span class="card-title">Annual Contract & Grant Spending</span>
+    </div>
+    <div class="card-body" style="height:280px;">
+        <canvas id="spendingChart"></canvas>
+    </div>
+</div>
+{% endif %}
+
 <!-- Main: two columns -->
 <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
@@ -218,4 +230,59 @@
     </a>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+{% if yearly_spending %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('spendingChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for y in yearly_spending %}'{{ y.year }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Spending',
+            data: [{% for y in yearly_spending %}{{ y.spending }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(59, 130, 246, 0.7)',
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        let v = ctx.parsed.y;
+                        if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+                        if (v >= 1e6) return '$' + (v/1e6).toFixed(0) + 'M';
+                        return '$' + v.toLocaleString();
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(v) {
+                        if (v >= 1e9) return '$' + (v/1e9).toFixed(0) + 'B';
+                        if (v >= 1e6) return '$' + (v/1e6).toFixed(0) + 'M';
+                        return '$' + v;
+                    },
+                    font: { family: 'JetBrains Mono', size: 11 }
+                },
+                grid: { color: 'rgba(0,0,0,0.04)' }
+            },
+            x: {
+                ticks: { font: { family: 'JetBrains Mono', size: 11 } },
+                grid: { display: false }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
 {% endblock %}

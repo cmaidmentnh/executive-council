@@ -197,6 +197,18 @@ def index():
         FROM councilors c WHERE c.end_date IS NULL ORDER BY c.district
     """).fetchall()
 
+    # Yearly spending for chart
+    yearly_spending = db.execute("""
+        SELECT SUBSTR(m.meeting_date, 1, 4) as year,
+               SUM(ai.amount) as spending,
+               COUNT(*) as items
+        FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.amount > 0
+        GROUP BY SUBSTR(m.meeting_date, 1, 4)
+        ORDER BY year
+    """).fetchall()
+
     # Top 5 vendors by total spending
     vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
     top_vendors = db.execute(f"""
@@ -211,7 +223,7 @@ def index():
     db.close()
     return render_template('index.html', stats=stats, latest=latest, recent=recent,
                            recent_contested=recent_contested, councilors=councilors,
-                           top_vendors=top_vendors)
+                           top_vendors=top_vendors, yearly_spending=yearly_spending)
 
 
 @app.route('/meetings')
