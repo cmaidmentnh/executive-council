@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Meetings — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-8">
+    <div>
+        <h1 class="page-title">Meetings</h1>
+        <p class="page-sub">{{ "{:,}".format(total) }} meetings{% if current_year %} in {{ current_year }}{% endif %}</p>
+    </div>
+    <select onchange="window.location='/meetings?year='+this.value" class="select">
+        <option value="">All Years</option>
+        {% for y in years %}
+        <option value="{{ y.y }}" {% if current_year == y.y %}selected{% endif %}>{{ y.y }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th class="right">Items</th>
+                    <th class="right">PDFs</th>
+                    <th class="right">Actions</th>
+                    <th class="right">Contested</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in meetings %}
+                <tr>
+                    <td><a href="/meeting/{{ m.id }}">{{ m.meeting_date|short_date }}</a></td>
+                    <td class="num">{{ m.item_count }}</td>
+                    <td class="num">{{ m.pdfs }}</td>
+                    <td class="num">{{ m.actions }}</td>
+                    <td class="right">
+                        {% if m.contested > 0 %}
+                        <span class="badge badge-denied">{{ m.contested }}</span>
+                        {% else %}
+                        <span class="text-muted">&mdash;</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if total > per_page %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?year={{ current_year }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page * per_page < total %}
+    <a href="?year={{ current_year }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

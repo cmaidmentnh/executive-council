@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Vendors — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-8">
+    <div>
+        <h1 class="page-title">Vendors</h1>
+        <p class="page-sub">{{ "{:,}".format(total) }} vendors{% if search %} matching "{{ search }}"{% endif %} &middot; ranked by total contract value</p>
+    </div>
+    <form action="/vendors" method="get" style="display:flex; align-items:center; gap:8px;">
+        <input type="text" name="q" value="{{ search }}" placeholder="Search vendors..." class="input" style="width:240px;">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th class="right">Items</th>
+                    <th class="right">Total Value</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vendors %}
+                <tr>
+                    <td><a href="/search?q={{ v.vendor|urlencode }}">{{ v.vendor }}</a></td>
+                    <td class="num">{{ "{:,}".format(v.item_count) }}</td>
+                    <td class="num bold">{{ v.total_amount|currency }}</td>
+                    <td class="num" style="text-align:left;">{{ v.first_seen|short_date }}</td>
+                    <td class="num" style="text-align:left;">{{ v.last_seen|short_date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if total > per_page %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?q={{ search }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page * per_page < total %}
+    <a href="?q={{ search }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

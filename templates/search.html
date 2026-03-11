@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Search — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="page-title">Search</h1>
+</div>
+
+<form action="/search" method="get" class="mb-8">
+    <div class="search-box">
+        <div class="search-input-wrap">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" name="q" value="{{ query }}" placeholder="Search agenda items, vendors, departments, descriptions..."
+                   class="input" autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+{% if query %}
+<p class="text-sm text-muted mb-4">{{ "{:,}".format(total) }} results for "<strong style="color:var(--c-text-mid);">{{ query }}</strong>"</p>
+
+{% if results %}
+<div class="card">
+    {% for r in results %}
+    <div class="agenda-row">
+        <div style="display:flex; align-items:flex-start; gap:16px;">
+            <div style="flex-shrink:0;">
+                <a href="/meeting/{{ r.meeting_id }}" class="link-accent mono text-sm" style="font-weight:600;">{{ r.meeting_date|short_date }}</a>
+                <div class="mono text-xs text-muted">#{{ r.item_number or '?' }}</div>
+            </div>
+            <div style="flex:1; min-width:0;">
+                {% if r.department %}
+                <div class="item-dept">{{ r.department }}</div>
+                {% endif %}
+                <div class="item-desc">{{ r.description[:300] if r.description else '' }}{% if r.description and r.description|length > 300 %}...{% endif %}</div>
+                {% if r.vendor %}
+                <div class="item-vendor">{{ r.vendor }}</div>
+                {% endif %}
+            </div>
+            {% if r.amount %}
+            <div class="item-amount" style="flex-shrink:0;">{{ r.amount|currency }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if total > per_page %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?q={{ query }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page * per_page < total %}
+    <a href="?q={{ query }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <p>No results found for "{{ query }}"</p>
+    <p class="hint">Try a different search term</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

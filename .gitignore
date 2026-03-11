@@ -1,0 +1,12 @@
+*.db
+*.db-shm
+*.db-wal
+*.db.backup*
+cache/
+downloads/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+*.log
+akamai_cookies.json
