@@ -172,8 +172,34 @@
     </div>
 </div>
 
+<!-- Top Vendors -->
+{% if top_vendors %}
+<div class="card mt-8">
+    <div class="card-header">
+        <span class="card-title">Top Vendors by Total Contract Value</span>
+        <a href="/vendors" class="card-link">All vendors &rarr;</a>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for v in top_vendors %}
+        <a href="/vendor/{{ v.vendor|urlencode }}" class="flex items-center justify-between px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+            <div class="flex items-center gap-3">
+                <span class="font-mono text-xs font-bold text-slate-300">{{ loop.index }}</span>
+                <span class="text-sm font-semibold text-slate-900">{{ v.vendor }}</span>
+                <span class="text-xs text-slate-400">{{ v.items }} items</span>
+            </div>
+            <span class="font-mono text-sm font-bold text-slate-900">{{ v.total|currency }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Quick nav cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-10">
+    <a href="/items" class="card text-center py-5 px-4 hover:border-blue-500 transition-colors no-underline">
+        <div class="font-bold text-slate-900">All Items</div>
+        <div class="text-xs text-slate-400 mt-1">{{ "{:,}".format(stats.agenda_items) }} agenda items</div>
+    </a>
     <a href="/vendors" class="card text-center py-5 px-4 hover:border-blue-500 transition-colors no-underline">
         <div class="font-bold text-slate-900">Vendors</div>
         <div class="text-xs text-slate-400 mt-1">{{ "{:,}".format(stats.vendors) }} companies</div>

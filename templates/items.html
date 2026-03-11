@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Browse Items — NH Executive Council{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">All Items</h1>
+        <p class="text-sm text-slate-500 mt-1">{{ "{:,}".format(total) }} items{% if item_type %} ({{ item_type }}){% endif %}{% if year %} in {{ year }}{% endif %}{% if dept %} — {{ dept }}{% endif %}</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<form action="/items" method="get" class="flex items-center gap-2 flex-wrap mb-6">
+    <select name="type" class="form-select text-xs py-1.5" style="min-width:130px;">
+        <option value="">All Types</option>
+        {% for t in types %}
+        <option value="{{ t.item_type }}" {% if item_type == t.item_type %}selected{% endif %}>{{ t.item_type|capitalize }}</option>
+        {% endfor %}
+    </select>
+    <select name="year" class="form-select text-xs py-1.5" style="min-width:100px;">
+        <option value="">All Years</option>
+        {% for y in years %}
+        <option value="{{ y.y }}" {% if year == y.y %}selected{% endif %}>{{ y.y }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="dept" value="{{ dept }}" placeholder="Department..." class="form-input text-xs py-1.5" style="width:220px;">
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    {% if item_type or year or dept %}
+    <a href="/items" class="btn btn-outline btn-sm">Clear</a>
+    {% endif %}
+</form>
+
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>#</th>
+                    <th>Department</th>
+                    <th>Description</th>
+                    <th>Vendor</th>
+                    <th class="text-right">Amount</th>
+                    <th class="text-center">Type</th>
+                    <th class="text-center">Vote</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in items %}
+                <tr class="{% if i.dissenting_votes %}row-contested{% endif %} clickable-row" onclick="window.location='/item/{{ i.id }}'">
+                    <td class="whitespace-nowrap">
+                        <a href="/meeting/{{ i.meeting_id }}" onclick="event.stopPropagation()">{{ i.meeting_date|compact_date }}</a>
+                    </td>
+                    <td class="font-mono text-xs font-bold text-slate-400">{{ i.item_number }}{{ i.sub_item or '' }}</td>
+                    <td class="text-xs whitespace-nowrap">
+                        {% if i.department %}<a href="/department/{{ i.department|norm_dept }}" onclick="event.stopPropagation()">{{ (i.department|norm_dept)[:25] }}</a>{% endif %}
+                    </td>
+                    <td style="max-width:350px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
+                    <td class="text-xs">
+                        {% if i.vendor %}<a href="/vendor/{{ i.vendor }}" onclick="event.stopPropagation()">{{ i.vendor[:25] }}</a>{% endif %}
+                    </td>
+                    <td class="text-right font-mono text-sm font-bold text-slate-900 whitespace-nowrap">{{ i.amount|currency }}</td>
+                    <td class="text-center">
+                        {% if i.item_type and i.item_type != 'other' %}
+                        <span class="badge badge-type">{{ i.item_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center whitespace-nowrap">
+                        {% if i.outcome %}
+                        <span class="badge badge-{{ i.outcome }}">{{ i.outcome }}</span>
+                        {% endif %}
+                        {% if i.dissenting_votes %}
+                        <div class="dissent-tag mt-1 justify-center text-[10px]">
+                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            {{ i.dissenting_votes|clean_dissenters }}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if total > per_page %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?type={{ item_type }}&year={{ year }}&dept={{ dept }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page * per_page < total %}
+    <a href="?type={{ item_type }}&year={{ year }}&dept={{ dept }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -22,6 +22,7 @@
 
             <nav class="nav-center">
                 <a href="/meetings" class="nav-link {% if request.endpoint in ('meetings','meeting_detail','item_detail') %}active{% endif %}">Meetings</a>
+                <a href="/items" class="nav-link {% if request.endpoint == 'items_browse' %}active{% endif %}">Items</a>
                 <a href="/councilors" class="nav-link {% if request.endpoint in ('councilors','councilor_detail') %}active{% endif %}">Councilors</a>
                 <a href="/vendors" class="nav-link {% if request.endpoint in ('vendors','vendor_detail') %}active{% endif %}">Vendors</a>
                 <a href="/departments" class="nav-link {% if request.endpoint in ('departments','department_detail') %}active{% endif %}">Departments</a>

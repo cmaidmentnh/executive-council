@@ -197,9 +197,21 @@ def index():
         FROM councilors c WHERE c.end_date IS NULL ORDER BY c.district
     """).fetchall()
 
+    # Top 5 vendors by total spending
+    vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
+    top_vendors = db.execute(f"""
+        SELECT {vnorm} as vendor, SUM(ai.amount) as total, COUNT(*) as items
+        FROM agenda_items ai
+        WHERE ai.vendor IS NOT NULL AND ai.amount > 0
+        GROUP BY {vnorm}
+        ORDER BY total DESC
+        LIMIT 5
+    """).fetchall()
+
     db.close()
     return render_template('index.html', stats=stats, latest=latest, recent=recent,
-                           recent_contested=recent_contested, councilors=councilors)
+                           recent_contested=recent_contested, councilors=councilors,
+                           top_vendors=top_vendors)
 
 
 @app.route('/meetings')
@@ -584,6 +596,69 @@ def department_detail(dept_name):
     return render_template('department_detail.html', dept_name=norm_name, items=items,
                            top_vendors=top_vendors, type_breakdown=type_breakdown,
                            total=total, total_value=total_value, page=page, per_page=per_page)
+
+
+@app.route('/items')
+def items_browse():
+    db = get_db()
+    page = int(request.args.get('page', 1))
+    item_type = request.args.get('type', '')
+    year = request.args.get('year', '')
+    dept = request.args.get('dept', '')
+    per_page = 50
+
+    where_parts = ['1=1']
+    params = []
+    if item_type:
+        where_parts.append("ai.item_type = ?")
+        params.append(item_type)
+    if year:
+        where_parts.append("SUBSTR(m.meeting_date, 1, 4) = ?")
+        params.append(year)
+    if dept:
+        # Match all raw variants of this normalized department
+        norm = normalize_dept(dept)
+        all_raw = db.execute("SELECT DISTINCT department FROM agenda_items WHERE department IS NOT NULL").fetchall()
+        matching = [r['department'] for r in all_raw if normalize_dept(r['department']) == norm]
+        if matching:
+            ph = ','.join('?' * len(matching))
+            where_parts.append(f"ai.department IN ({ph})")
+            params.extend(matching)
+
+    where = ' AND '.join(where_parts)
+
+    items = db.execute(f"""
+        SELECT ai.*, m.meeting_date,
+               ca.outcome, ca.dissenting_votes
+        FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
+        WHERE {where}
+        ORDER BY m.meeting_date DESC, ai.item_number
+        LIMIT ? OFFSET ?
+    """, params + [per_page, (page - 1) * per_page]).fetchall()
+
+    total = db.execute(f"""
+        SELECT COUNT(*) FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE {where}
+    """, params).fetchone()[0]
+
+    # Get filter options
+    years = db.execute("SELECT DISTINCT SUBSTR(meeting_date, 1, 4) as y FROM meetings ORDER BY y DESC").fetchall()
+    types = db.execute("SELECT DISTINCT item_type FROM agenda_items WHERE item_type IS NOT NULL ORDER BY item_type").fetchall()
+
+    db.close()
+    return render_template('items.html', items=items, total=total,
+                           page=page, per_page=per_page,
+                           item_type=item_type, year=year, dept=dept,
+                           years=years, types=types)
 
 
 @app.route('/search')
