@@ -1353,14 +1353,16 @@ def unsubscribe(token):
 #   /feed.xml?department=transportation — department name substring
 #   /feed.xml?vendor=cives             — vendor name substring
 #   /feed.xml?min_amount=1000000       — items >= $1M
+#   /feed.xml?max_amount=5000000       — items <= $5M
 #   /feed.xml?meeting=123              — specific meeting ID
 #   /feed.xml?q=sole+source            — full-text search in description
 #   /feed.xml?year=2026                — only items from meetings in that year
+#   /feed.xml?from=2025-01-01&to=2025-12-31 — date range
 #   /feed.xml?limit=50                 — number of items (default 100, max 500)
 #   /feed.xml?consent=1                — only consent calendar items
 #   /feed.xml?late=1                   — only late items
 #   /feed.xml?tabled=1                 — only tabled items
-# Params can be combined: /feed.xml?type=contract&min_amount=5000000&year=2026
+# All params combine: /feed.xml?type=contract&min_amount=1000000&from=2025-06-01
 
 @app.route('/feed.xml')
 @app.route('/rss')
@@ -1414,6 +1416,16 @@ def rss_feed():
         where.append("m.meeting_date LIKE ?")
         params.append(f"{year}%")
 
+    # Date range: from=YYYY-MM-DD, to=YYYY-MM-DD
+    date_from = request.args.get('from', '').strip()
+    if date_from and len(date_from) >= 4:
+        where.append("m.meeting_date >= ?")
+        params.append(date_from)
+    date_to = request.args.get('to', '').strip()
+    if date_to and len(date_to) >= 4:
+        where.append("m.meeting_date <= ?")
+        params.append(date_to)
+
     if request.args.get('consent') == '1':
         where.append("ai.is_consent_calendar = 1")
     if request.args.get('late') == '1':
@@ -1453,6 +1465,12 @@ def rss_feed():
         filter_parts.append(year)
     if q:
         filter_parts.append(f'"{q}"')
+    if date_from and date_to:
+        filter_parts.append(f"{date_from} to {date_to}")
+    elif date_from:
+        filter_parts.append(f"from {date_from}")
+    elif date_to:
+        filter_parts.append(f"through {date_to}")
     feed_title = "Granite State G&amp;C Tracker"
     if filter_parts:
         feed_title += " — " + saxutils.escape(", ".join(filter_parts))
@@ -1556,7 +1574,7 @@ def rss_feed():
     <description>NH Governor &amp; Executive Council agenda items — contracts, grants, nominations, and more. Unofficial tracker.</description>
     <language>en-us</language>
     <atom:link href="{self_url}" rel="self" type="application/rss+xml"/>
-    <docs>Filters: type, department, vendor, min_amount, max_amount, meeting, q, year, consent, late, tabled, limit</docs>
+    <docs>Filters: type, department, vendor, min_amount, max_amount, meeting, q, year, from, to, consent, late, tabled, limit</docs>
 {items_xml}  </channel>
 </rss>"""
     return Response(xml, mimetype='application/rss+xml')
