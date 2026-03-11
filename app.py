@@ -812,14 +812,21 @@ def search():
     page = int(request.args.get('page', 1))
     per_page = 50
 
-    if not q or len(q) < 3:
+    if not q or len(q) < 2:
         db.close()
         return render_template('search.html', results=[], query=q, item_type=item_type,
                                total=0, page=1, per_page=per_page,
                                personnel=[], personnel_total=0)
 
-    where = "(ai.description LIKE ? OR ai.vendor LIKE ? OR ai.department LIKE ?)"
-    params = [f'%{q}%', f'%{q}%', f'%{q}%']
+    # Split query into words so "gordon darby" matches "Gordon-Darby"
+    # and "chris ellms" matches "Christopher Ellms"
+    words = q.split()
+    word_clauses = []
+    params = []
+    for word in words:
+        word_clauses.append("(ai.description LIKE ? OR ai.vendor LIKE ? OR ai.department LIKE ?)")
+        params.extend([f'%{word}%', f'%{word}%', f'%{word}%'])
+    where = " AND ".join(word_clauses)
     if item_type:
         where += " AND ai.item_type = ?"
         params.append(item_type)
@@ -839,24 +846,31 @@ def search():
         WHERE {where}
     """, params).fetchone()[0]
 
-    # Also search personnel actions (person_name, position_title, description)
-    personnel = db.execute("""
+    # Also search personnel actions — same word-split logic
+    p_clauses = []
+    p_params = []
+    for word in words:
+        p_clauses.append("(ca.person_name LIKE ? OR ca.position_title LIKE ? OR ca.description LIKE ?)")
+        p_params.extend([f'%{word}%', f'%{word}%', f'%{word}%'])
+    p_where = " AND ".join(p_clauses)
+
+    personnel = db.execute(f"""
         SELECT ca.*, m.meeting_date as mdate,
                (SELECT MIN(a2.id) FROM agenda_items a2
                 WHERE a2.meeting_id = ca.meeting_id AND a2.item_number = ca.item_number) as item_id
         FROM council_actions ca
         JOIN meetings m ON m.id = ca.meeting_id
         WHERE ca.action_type IN ('confirmation', 'nomination', 'resignation')
-          AND (ca.person_name LIKE ? OR ca.position_title LIKE ? OR ca.description LIKE ?)
+          AND {p_where}
         ORDER BY m.meeting_date DESC
         LIMIT 20
-    """, [f'%{q}%', f'%{q}%', f'%{q}%']).fetchall()
+    """, p_params).fetchall()
 
-    personnel_total = db.execute("""
+    personnel_total = db.execute(f"""
         SELECT COUNT(*) FROM council_actions ca
         WHERE ca.action_type IN ('confirmation', 'nomination', 'resignation')
-          AND (ca.person_name LIKE ? OR ca.position_title LIKE ? OR ca.description LIKE ?)
-    """, [f'%{q}%', f'%{q}%', f'%{q}%']).fetchone()[0]
+          AND {p_where}
+    """, p_params).fetchone()[0]
 
     db.close()
     return render_template('search.html', results=results, query=q, item_type=item_type,
