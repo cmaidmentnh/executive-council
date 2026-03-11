@@ -11,7 +11,6 @@ node_modules/
 *.log
 akamai_cookies.json
 *.docx
-scraper.py
 generate_*.py
 upload_*.sh
 venv/
