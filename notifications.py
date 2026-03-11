@@ -26,11 +26,11 @@ log = logging.getLogger(__name__)
 
 
 def get_subscribed_users(conn):
-    """Return list of (user_id, email) for users with notifications enabled."""
+    """Return list of users with notifications enabled and email verified."""
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT id, email FROM users
-        WHERE is_active = 1 AND notify_new_meetings = 1
+        SELECT id, email, unsubscribe_token FROM users
+        WHERE is_active = 1 AND notify_new_meetings = 1 AND email_verified = 1
     """)
     return cursor.fetchall()
 
@@ -45,7 +45,7 @@ def format_currency(value):
     return f"${value:,.0f}"
 
 
-def build_email(summary):
+def build_email(summary, unsubscribe_token=None):
     """Build HTML + plain text email for a new meeting notification.
 
     summary dict keys: meeting_id, meeting_date, item_count, total_value,
@@ -63,7 +63,11 @@ def build_email(summary):
     value_str = format_currency(summary.get('total_value', 0))
     meeting_url = f"{SITE_URL}/meeting/{summary['meeting_id']}"
 
-    subject = f"New G&C Agenda: {date_display} -- {summary['item_count']} Items, {value_str}"
+    if summary.get('_is_late_update'):
+        new_count = summary.get('_new_late_count', 0)
+        subject = f"G&C Agenda Update: {date_display} -- {new_count} New Late Items Added"
+    else:
+        subject = f"New G&C Agenda: {date_display} -- {summary['item_count']} Items, {value_str}"
 
     # ── Stats row ──
     stats_cells = [
@@ -163,7 +167,7 @@ def build_email(summary):
     html_body = f"""
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;color:#1e293b;">
   <p style="margin:0 0 8px 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Granite State G&amp;C Tracker</p>
-  <h2 style="margin:0 0 4px 0;font-size:18px;color:#64748b;font-weight:600;">New G&amp;C Agenda Posted</h2>
+  <h2 style="margin:0 0 4px 0;font-size:18px;color:#64748b;font-weight:600;">{"G&amp;C Agenda Updated — " + str(summary.get("_new_late_count", 0)) + " New Late Items" if summary.get("_is_late_update") else "New G&amp;C Agenda Posted"}</h2>
   <p style="font-size:24px;font-weight:800;margin:0 0 4px 0;">{date_display}</p>
   <p style="font-size:12px;color:#94a3b8;margin:0 0 20px 0;">{cal_line}</p>
 
@@ -187,7 +191,7 @@ def build_email(summary):
   <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0 16px 0;">
   <p style="font-size:11px;color:#94a3b8;">
     You're receiving this because you signed up for alerts on <a href="{SITE_URL}" style="color:#94a3b8;">Granite State G&amp;C Tracker</a>. This is an unofficial resource.
-    <a href="{SITE_URL}/account" style="color:#94a3b8;">Manage notifications</a>
+    <a href="{SITE_URL}/account" style="color:#94a3b8;">Manage notifications</a>{f' · <a href="{SITE_URL}/unsubscribe/{unsubscribe_token}" style="color:#94a3b8;">Unsubscribe</a>' if unsubscribe_token else ''}
   </p>
 </div>
 """
@@ -204,11 +208,16 @@ TOP ITEMS BY VALUE
 
 ---
 Manage notifications: {SITE_URL}/account
+{f"Unsubscribe: {SITE_URL}/unsubscribe/{unsubscribe_token}" if unsubscribe_token else ""}
 """
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = SENDER
+    if unsubscribe_token:
+        unsub_url = f"{SITE_URL}/unsubscribe/{unsubscribe_token}"
+        msg['List-Unsubscribe'] = f"<{unsub_url}>"
+        msg['List-Unsubscribe-Post'] = "List-Unsubscribe=One-Click"
     msg.attach(MIMEText(text_body, 'plain'))
     msg.attach(MIMEText(html_body, 'html'))
     return msg
@@ -235,7 +244,8 @@ def send_notifications(summary, db_path=None):
 
     for i, user in enumerate(users):
         email = user['email']
-        msg = build_email(summary)
+        unsub_token = user['unsubscribe_token'] if 'unsubscribe_token' in user.keys() else None
+        msg = build_email(summary, unsubscribe_token=unsub_token)
         msg['To'] = email
 
         try:

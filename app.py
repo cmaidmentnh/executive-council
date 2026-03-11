@@ -7,7 +7,7 @@ Flask app serving 14+ years of G&C meeting data.
 import sqlite3
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, abort, Response, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1070,6 +1070,11 @@ def init_auth_db():
             password_hash TEXT NOT NULL,
             is_active INTEGER DEFAULT 1,
             notify_new_meetings INTEGER DEFAULT 1,
+            email_verified INTEGER DEFAULT 0,
+            verify_token TEXT,
+            reset_token TEXT,
+            reset_token_expires TIMESTAMP,
+            unsubscribe_token TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP
         )
@@ -1084,6 +1089,16 @@ def init_auth_db():
             error TEXT
         )
     """)
+    # Add new columns to existing tables (safe if they already exist)
+    for col, default in [
+        ('email_verified', '0'), ('verify_token', 'NULL'),
+        ('reset_token', 'NULL'), ('reset_token_expires', 'NULL'),
+        ('unsubscribe_token', 'NULL'),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} DEFAULT {default}")
+        except sqlite3.OperationalError:
+            pass
     conn.commit()
     conn.close()
 
@@ -1116,11 +1131,34 @@ def inject_user():
 
 # ─── AUTH ROUTES ───
 
+def _send_email(to, subject, html, text):
+    """Send an email via SES. Returns True on success."""
+    try:
+        import boto3
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        ses = boto3.client('ses', region_name='us-east-1')
+        sender = "Granite State G&C Tracker <alerts@executivecouncilnh.com>"
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = sender
+        msg['To'] = to
+        msg.attach(MIMEText(text, 'plain'))
+        msg.attach(MIMEText(html, 'html'))
+        ses.send_raw_email(Source=sender, Destinations=[to], RawMessage={'Data': msg.as_string()})
+        return True
+    except Exception:
+        return False
+
+SITE_URL = "https://executivecouncilnh.com"
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if session.get('user_id'):
         return redirect('/')
     error = None
+    success = False
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
@@ -1137,15 +1175,22 @@ def register():
             if existing:
                 error = 'An account with that email already exists.'
             else:
+                verify_token = secrets.token_urlsafe(32)
+                unsub_token = secrets.token_urlsafe(32)
                 db.execute(
-                    "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-                    (email, generate_password_hash(password))
+                    "INSERT INTO users (email, password_hash, verify_token, unsubscribe_token, email_verified, notify_new_meetings) VALUES (?, ?, ?, ?, 0, 0)",
+                    (email, generate_password_hash(password), verify_token, unsub_token)
                 )
                 db.commit()
                 user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
                 session['user_id'] = user['id']
+                # Send verification email
+                verify_url = f"{SITE_URL}/verify/{verify_token}"
+                _send_email(email, "Verify your email — Granite State G&C Tracker",
+                    f'<p>Click to verify your email and enable notifications:</p><p><a href="{verify_url}" style="display:inline-block;padding:10px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Verify Email</a></p><p style="font-size:12px;color:#94a3b8;">Or copy: {verify_url}</p>',
+                    f"Verify your email: {verify_url}")
                 db.close()
-                return redirect('/')
+                return redirect('/account?verify=sent')
             db.close()
     return render_template('register.html', error=error)
 
@@ -1196,6 +1241,175 @@ def update_notifications():
     db.commit()
     db.close()
     return redirect(url_for('account'))
+
+
+@app.route('/account/resend-verification', methods=['POST'])
+@login_required
+def resend_verification():
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    if user and not user['email_verified']:
+        token = user['verify_token'] or secrets.token_urlsafe(32)
+        if not user['verify_token']:
+            db.execute("UPDATE users SET verify_token = ? WHERE id = ?", (token, user['id']))
+            db.commit()
+        verify_url = f"{SITE_URL}/verify/{token}"
+        _send_email(user['email'], "Verify your email — Granite State G&C Tracker",
+            f'<p>Click to verify your email:</p><p><a href="{verify_url}" style="display:inline-block;padding:10px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Verify Email</a></p><p style="font-size:12px;color:#94a3b8;">Or copy: {verify_url}</p>',
+            f"Verify your email: {verify_url}")
+    db.close()
+    return redirect('/account?verify=sent')
+
+
+@app.route('/verify/<token>')
+def verify_email(token):
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE verify_token = ?", (token,)).fetchone()
+    if user:
+        db.execute("UPDATE users SET email_verified = 1, verify_token = NULL, notify_new_meetings = 1 WHERE id = ?", (user['id'],))
+        db.commit()
+        session['user_id'] = user['id']
+        db.close()
+        return redirect('/account?verified=1')
+    db.close()
+    return render_template('message.html', title='Invalid Link', message='This verification link is invalid or has already been used.'), 400
+
+
+@app.route('/forgot', methods=['GET', 'POST'])
+def forgot_password():
+    sent = False
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        db = get_db()
+        user = db.execute("SELECT id FROM users WHERE email = ? AND is_active = 1", (email,)).fetchone()
+        if user:
+            token = secrets.token_urlsafe(32)
+            expires = (datetime.now().replace(microsecond=0) + timedelta(hours=1)).isoformat()
+            db.execute("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?",
+                       (token, expires, user['id']))
+            db.commit()
+            reset_url = f"{SITE_URL}/reset/{token}"
+            _send_email(email, "Reset your password — Granite State G&C Tracker",
+                f'<p>Click to reset your password (expires in 1 hour):</p><p><a href="{reset_url}" style="display:inline-block;padding:10px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reset Password</a></p><p style="font-size:12px;color:#94a3b8;">Or copy: {reset_url}</p><p style="font-size:12px;color:#94a3b8;">If you didn\'t request this, ignore this email.</p>',
+                f"Reset your password (1 hour): {reset_url}\n\nIf you didn't request this, ignore this email.")
+        db.close()
+        sent = True  # Always show sent message (don't reveal if email exists)
+    return render_template('forgot.html', sent=sent)
+
+
+@app.route('/reset/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE reset_token = ? AND is_active = 1", (token,)).fetchone()
+    if not user:
+        db.close()
+        return render_template('message.html', title='Invalid Link', message='This reset link is invalid or has already been used.'), 400
+    # Check expiry
+    if user['reset_token_expires']:
+        try:
+            expires = datetime.fromisoformat(user['reset_token_expires'])
+            if datetime.now() > expires:
+                db.close()
+                return render_template('message.html', title='Link Expired', message='This reset link has expired. Please request a new one.'), 400
+        except ValueError:
+            pass
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm', '')
+        if len(password) < 8:
+            error = 'Password must be at least 8 characters.'
+        elif password != confirm:
+            error = 'Passwords do not match.'
+        else:
+            db.execute("UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?",
+                       (generate_password_hash(password), user['id']))
+            db.commit()
+            session['user_id'] = user['id']
+            db.close()
+            return redirect('/account?reset=1')
+    db.close()
+    return render_template('reset.html', token=token, error=error)
+
+
+@app.route('/unsubscribe/<token>')
+def unsubscribe(token):
+    db = get_db()
+    user = db.execute("SELECT id, email FROM users WHERE unsubscribe_token = ?", (token,)).fetchone()
+    if user:
+        db.execute("UPDATE users SET notify_new_meetings = 0 WHERE id = ?", (user['id'],))
+        db.commit()
+        db.close()
+        return render_template('message.html', title='Unsubscribed',
+            message=f"You've been unsubscribed from email notifications. You can re-enable them anytime from your account settings.")
+    db.close()
+    return render_template('message.html', title='Invalid Link', message='This unsubscribe link is invalid.'), 400
+
+
+# ─── RSS FEED ───
+
+@app.route('/feed.xml')
+@app.route('/rss')
+def rss_feed():
+    db = get_db()
+    meetings = db.execute("""
+        SELECT m.id, m.meeting_date, m.title, m.item_count,
+               COALESCE((SELECT SUM(amount) FROM agenda_items WHERE meeting_id = m.id AND amount IS NOT NULL), 0) as total_value,
+               COALESCE((SELECT COUNT(*) FROM agenda_items WHERE meeting_id = m.id AND item_type = 'contract'), 0) as contracts
+        FROM meetings m WHERE m.item_count > 0
+        ORDER BY m.meeting_date DESC LIMIT 20
+    """).fetchall()
+
+    items_xml = ""
+    for m in meetings:
+        try:
+            dt = datetime.strptime(m['meeting_date'], '%Y-%m-%d')
+            pub_date = dt.strftime('%a, %d %b %Y 07:00:00 -0500')
+            date_display = dt.strftime('%B %-d, %Y')
+        except ValueError:
+            pub_date = ""
+            date_display = m['meeting_date']
+
+        from notifications import format_currency
+        value_str = format_currency(m['total_value'])
+        link = f"{SITE_URL}/meeting/{m['id']}"
+
+        # Get top 5 items for description
+        top = db.execute("""
+            SELECT description, amount, vendor, department FROM agenda_items
+            WHERE meeting_id = ? AND amount IS NOT NULL ORDER BY amount DESC LIMIT 5
+        """, (m['id'],)).fetchall()
+        desc_lines = [f"<p><strong>{m['item_count']} items</strong> | Total value: {value_str} | {m['contracts']} contracts</p><ul>"]
+        for t in top:
+            amt = format_currency(t['amount'])
+            desc = (t['description'] or '')[:150]
+            desc_lines.append(f"<li>{amt} — {desc}</li>")
+        desc_lines.append("</ul>")
+        description = "\n".join(desc_lines)
+        # Escape for XML CDATA
+        title_text = f"G&amp;C Agenda: {date_display} — {m['item_count']} Items, {value_str}"
+
+        items_xml += f"""    <item>
+      <title>{title_text}</title>
+      <link>{link}</link>
+      <guid isPermaLink="true">{link}</guid>
+      <pubDate>{pub_date}</pubDate>
+      <description><![CDATA[{description}]]></description>
+    </item>\n"""
+
+    db.close()
+
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Granite State G&amp;C Tracker</title>
+    <link>{SITE_URL}</link>
+    <description>NH Governor &amp; Executive Council meeting agendas, contracts, and votes. Unofficial tracker.</description>
+    <language>en-us</language>
+    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml"/>
+{items_xml}  </channel>
+</rss>"""
+    return Response(xml, mimetype='application/rss+xml')
 
 
 @app.errorhandler(404)

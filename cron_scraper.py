@@ -290,6 +290,94 @@ def build_notification_summary(meeting_id, conn):
     }
 
 
+def check_for_late_items(page, conn):
+    """Re-scrape the most recent meeting to detect newly added late items.
+
+    Late items are often added after the initial agenda is posted.
+    Returns list of (meeting_id, new_item_count) for meetings with new items.
+    """
+    c = conn.cursor()
+    # Get the most recent meeting that has items (likely to get late items added)
+    c.execute("""
+        SELECT m.id, m.nid, m.url, m.meeting_date, m.item_count
+        FROM meetings m WHERE m.item_count > 0
+        ORDER BY m.meeting_date DESC LIMIT 2
+    """)
+    recent = c.fetchall()
+
+    updates = []
+    for meeting in recent:
+        meeting_id = meeting['id']
+        url = meeting['url']
+        if not url:
+            continue
+
+        full_url = f"{BASE_URL}{url}" if url.startswith('/') else url
+        log.info(f"Checking for late items: {meeting['meeting_date']} ({meeting['item_count']} existing)")
+
+        try:
+            page.goto(full_url, timeout=45000)
+            page.wait_for_timeout(3000)
+        except Exception as e:
+            log.error(f"Failed to load {full_url}: {e}")
+            continue
+
+        page_text = page.inner_text('body')
+        page_html = page.content()
+        items = parse_meeting_dot_format(page_text, page_html)
+
+        if not items:
+            continue
+
+        # Get existing items
+        c.execute("SELECT item_number, sub_item FROM agenda_items WHERE meeting_id = ?", (meeting_id,))
+        existing_keys = {(row['item_number'], row['sub_item']) for row in c.fetchall()}
+
+        new_count = 0
+        for item in items:
+            key = (item['item_number'], item['sub_item'])
+            if key in existing_keys:
+                continue
+            try:
+                c.execute("""
+                    INSERT INTO agenda_items
+                    (meeting_id, item_number, sub_item, section, department, sub_department,
+                     description, amount, amount_text, vendor, vendor_city, vendor_state,
+                     funding_source, effective_date_start, effective_date_end,
+                     item_type, is_consent_calendar, is_tabled, is_late_item,
+                     download_url, business_record_url, raw_text)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    meeting_id, item['item_number'], item['sub_item'],
+                    item['section'], item['department'], item['sub_department'],
+                    item['description'], item['amount'], item['amount_text'],
+                    item['vendor'], item['vendor_city'], item['vendor_state'],
+                    item['funding_source'], item['effective_date_start'], item['effective_date_end'],
+                    item['item_type'], item['is_consent_calendar'], item['is_tabled'],
+                    item['is_late_item'], item['download_url'], item['business_record_url'],
+                    item['raw_text']
+                ))
+                new_count += 1
+            except sqlite3.IntegrityError:
+                pass
+
+        if new_count > 0:
+            # Update item count
+            c.execute("SELECT COUNT(*) as cnt FROM agenda_items WHERE meeting_id = ?", (meeting_id,))
+            total = c.fetchone()['cnt']
+            c.execute("UPDATE meetings SET item_count = ?, scraped_at = ? WHERE id = ?",
+                      (total, datetime.now().isoformat(), meeting_id))
+            conn.commit()
+            log.info(f"Found {new_count} new late items for {meeting['meeting_date']}")
+            updates.append((meeting_id, new_count))
+        else:
+            log.info(f"No new items found for {meeting['meeting_date']}")
+
+        time.sleep(2)
+
+    return updates
+
+
 def main():
     force = '--force' in sys.argv
 
@@ -300,6 +388,7 @@ def main():
     conn = get_db()
 
     new_meetings_found = []
+    late_item_updates = []
 
     with sync_playwright() as p:
         browser, page = launch_browser(p)
@@ -316,36 +405,36 @@ def main():
 
             to_process = new_meetings + empty_meetings
 
-            if not to_process:
+            if to_process:
+                log.info(f"Found {len(new_meetings)} new + {len(empty_meetings)} empty meetings to process")
+
+                for meeting in to_process:
+                    log.info(f"Processing: {meeting['title']} ({meeting['date']})")
+
+                    # Insert into DB if new
+                    meeting_id = insert_meeting(meeting, conn)
+                    if not meeting_id:
+                        log.error(f"Failed to get meeting_id for {meeting['title']}")
+                        continue
+
+                    # Scrape the meeting page
+                    count = scrape_and_store(page, meeting, meeting_id, conn)
+                    log.info(f"Inserted {count} items for {meeting['title']}")
+
+                    if count > 0:
+                        new_meetings_found.append((meeting_id, meeting))
+
+                    time.sleep(2)
+            else:
                 log.info("No new meetings found")
-                browser.close()
-                conn.close()
-                return
 
-            log.info(f"Found {len(new_meetings)} new + {len(empty_meetings)} empty meetings to process")
-
-            for meeting in to_process:
-                log.info(f"Processing: {meeting['title']} ({meeting['date']})")
-
-                # Insert into DB if new
-                meeting_id = insert_meeting(meeting, conn)
-                if not meeting_id:
-                    log.error(f"Failed to get meeting_id for {meeting['title']}")
-                    continue
-
-                # Scrape the meeting page
-                count = scrape_and_store(page, meeting, meeting_id, conn)
-                log.info(f"Inserted {count} items for {meeting['title']}")
-
-                if count > 0:
-                    new_meetings_found.append((meeting_id, meeting))
-
-                time.sleep(2)
+            # Always check the most recent meetings for late items
+            late_item_updates = check_for_late_items(page, conn)
 
         finally:
             browser.close()
 
-    # Send notifications for genuinely new meetings (not re-scrapes of empty ones)
+    # Send notifications for genuinely new meetings
     for meeting_id, meeting in new_meetings_found:
         if meeting in new_meetings:
             summary = build_notification_summary(meeting_id, conn)
@@ -353,6 +442,17 @@ def main():
                 log.info(f"Sending notifications for {meeting['date']}...")
                 sent = send_notifications(summary, db_path=DB_PATH)
                 log.info(f"Sent {sent} notification emails")
+
+    # Send late item update notifications
+    for meeting_id, new_count in late_item_updates:
+        summary = build_notification_summary(meeting_id, conn)
+        if summary:
+            # Override subject prefix for late items
+            summary['_is_late_update'] = True
+            summary['_new_late_count'] = new_count
+            log.info(f"Sending late item notifications for meeting {meeting_id} ({new_count} new items)...")
+            sent = send_notifications(summary, db_path=DB_PATH)
+            log.info(f"Sent {sent} late item notification emails")
 
     conn.close()
     log.info("Cron scraper finished")
