@@ -50,7 +50,7 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         {% if r.department %}
-                        <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wide">{{ r.department }}</span>
+                        <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wide">{{ r.department|norm_dept }}</span>
                         {% endif %}
                         {% if r.item_type and r.item_type != 'other' %}
                         <span class="badge badge-type">{{ r.item_type }}</span>

@@ -109,7 +109,7 @@
                     </td>
                     <td class="text-xs whitespace-nowrap">
                         {% if item.department %}
-                        <a href="/department/{{ item.department }}" onclick="event.stopPropagation()">{{ item.department[:30] }}</a>
+                        <a href="/department/{{ item.department|norm_dept }}" onclick="event.stopPropagation()">{{ item.department|norm_dept }}</a>
                         {% endif %}
                         {% if item.item_type and item.item_type != 'other' %}
                         <span class="badge badge-type ml-1">{{ item.item_type }}</span>

@@ -62,6 +62,26 @@ def normalize_dissent_names(raw):
     return names
 
 
+# Department name normalization (fixes typos, &/AND variants, prefix inconsistencies)
+_DEPT_FIXES = {
+    'DEPARTMENT OF AGRICULTURAL, MARKETS & FOOD': 'DEPARTMENT OF AGRICULTURE, MARKETS & FOOD',
+    'DEPARTMENT OF MILITARY AFFAIRS AND VETERAN SERVICES': 'DEPARTMENT OF MILITARY AFFAIRS AND VETERANS SERVICES',
+    'NEW HAMPSHIRE DEPARTMENT OF BUSINESS AND ECONOMIC AFFAIRS': 'DEPARTMENT OF BUSINESS AND ECONOMIC AFFAIRS',
+    'NEW HAMPSHIRE DEPARTMENT OF STATE': 'DEPARTMENT OF STATE',
+    'FISH AND GAME DEPARTMENT': 'NEW HAMPSHIRE FISH AND GAME DEPARTMENT',
+    'NEW HAMPSHIRE FISH AND GAME COMMISSION': 'NEW HAMPSHIRE FISH AND GAME DEPARTMENT',
+}
+
+def normalize_dept(name):
+    """Normalize department name — fix typos and variants."""
+    if not name:
+        return name
+    fixed = _DEPT_FIXES.get(name, name)
+    # Normalize & to AND for consistency
+    fixed = fixed.replace(' & ', ' AND ')
+    return fixed
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -76,6 +96,12 @@ def clean_dissenters_filter(value):
     """Template filter to display clean dissenter names."""
     names = normalize_dissent_names(value)
     return ', '.join(names) if names else value or ''
+
+
+@app.template_filter('norm_dept')
+def norm_dept_filter(value):
+    """Template filter to normalize department names."""
+    return normalize_dept(value)
 
 
 @app.template_filter('currency')
@@ -223,15 +249,22 @@ def meeting_detail(meeting_id):
     items = db.execute("""
         SELECT ai.*,
                ca.outcome, ca.dissenting_votes, ca.motion_by,
-               id2.filename as pdf_filename
+               (SELECT id2.filename FROM item_downloads id2
+                WHERE id2.meeting_id = ai.meeting_id AND id2.item_number = ai.item_number
+                  AND (id2.sub_item IS NULL OR id2.sub_item = '' OR id2.sub_item = ai.sub_item)
+                LIMIT 1) as pdf_filename
         FROM agenda_items ai
-        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
-            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
-        LEFT JOIN item_downloads id2 ON id2.meeting_id = ai.meeting_id
-            AND id2.item_number = ai.item_number AND id2.sub_item IS NULL
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+              AND (ca2.sub_item IS NULL OR ca2.sub_item = '' OR ca2.sub_item = ai.sub_item)
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
         WHERE ai.meeting_id = ?
         ORDER BY CAST(CASE WHEN ai.item_number GLOB '[0-9]*' THEN ai.item_number ELSE '9999' END AS INTEGER),
-                 ai.item_number
+                 ai.item_number, ai.sub_item
     """, (meeting_id,)).fetchall()
 
     # Non-vote actions
@@ -458,16 +491,38 @@ def vendor_detail(vendor_name):
 @app.route('/departments')
 def departments():
     db = get_db()
-    depts = db.execute("""
+    raw_depts = db.execute("""
         SELECT ai.department, COUNT(*) as item_count, SUM(ai.amount) as total_amount,
                COUNT(DISTINCT ai.meeting_id) as meetings,
                MIN(m.meeting_date) as first_seen, MAX(m.meeting_date) as last_seen
         FROM agenda_items ai
         JOIN meetings m ON m.id = ai.meeting_id
-        WHERE ai.department IS NOT NULL
+        WHERE ai.department IS NOT NULL AND ai.department != ''
         GROUP BY ai.department
-        ORDER BY total_amount DESC
     """).fetchall()
+    # Merge variants under normalized names
+    merged = {}
+    for d in raw_depts:
+        norm = normalize_dept(d['department'])
+        if norm in merged:
+            m = merged[norm]
+            m['item_count'] += d['item_count']
+            m['total_amount'] = (m['total_amount'] or 0) + (d['total_amount'] or 0)
+            m['meetings'] += d['meetings']
+            if d['first_seen'] and (not m['first_seen'] or d['first_seen'] < m['first_seen']):
+                m['first_seen'] = d['first_seen']
+            if d['last_seen'] and (not m['last_seen'] or d['last_seen'] > m['last_seen']):
+                m['last_seen'] = d['last_seen']
+        else:
+            merged[norm] = {
+                'department': norm,
+                'item_count': d['item_count'],
+                'total_amount': d['total_amount'] or 0,
+                'meetings': d['meetings'],
+                'first_seen': d['first_seen'],
+                'last_seen': d['last_seen'],
+            }
+    depts = sorted(merged.values(), key=lambda x: x['total_amount'] or 0, reverse=True)
     db.close()
     return render_template('departments.html', departments=depts)
 
@@ -478,41 +533,55 @@ def department_detail(dept_name):
     page = int(request.args.get('page', 1))
     per_page = 50
 
+    # Find all raw department names that normalize to this name
+    norm_name = normalize_dept(dept_name)
+    all_raw = db.execute("SELECT DISTINCT department FROM agenda_items WHERE department IS NOT NULL").fetchall()
+    matching_raw = [r['department'] for r in all_raw if normalize_dept(r['department']) == norm_name]
+    if not matching_raw:
+        abort(404)
+    ph = ','.join('?' * len(matching_raw))
+
     # Top vendors for this department (normalized names)
     vnorm = VENDOR_NORM_SQL.format(col='vendor')
     top_vendors = db.execute(f"""
         SELECT {vnorm} as vendor, COUNT(*) as item_count, SUM(amount) as total_amount
         FROM agenda_items
-        WHERE department = ? AND vendor IS NOT NULL AND amount > 0
+        WHERE department IN ({ph}) AND vendor IS NOT NULL AND amount > 0
         GROUP BY {vnorm} ORDER BY total_amount DESC LIMIT 15
-    """, (dept_name,)).fetchall()
+    """, matching_raw).fetchall()
 
     # Item type breakdown
-    type_breakdown = db.execute("""
+    type_breakdown = db.execute(f"""
         SELECT item_type, COUNT(*) as cnt, SUM(amount) as total
-        FROM agenda_items WHERE department = ?
+        FROM agenda_items WHERE department IN ({ph})
         GROUP BY item_type ORDER BY cnt DESC
-    """, (dept_name,)).fetchall()
+    """, matching_raw).fetchall()
 
     # Recent items
-    items = db.execute("""
+    items = db.execute(f"""
         SELECT ai.*, m.meeting_date,
                ca.outcome, ca.dissenting_votes
         FROM agenda_items ai
         JOIN meetings m ON m.id = ai.meeting_id
-        LEFT JOIN council_actions ca ON ca.meeting_id = ai.meeting_id
-            AND ca.item_number = ai.item_number AND ca.action_type = 'vote'
-        WHERE ai.department = ?
+        LEFT JOIN council_actions ca ON ca.id = (
+            SELECT ca2.id FROM council_actions ca2
+            WHERE ca2.meeting_id = ai.meeting_id AND ca2.item_number = ai.item_number
+              AND ca2.action_type = 'vote'
+            ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
+            LIMIT 1
+        )
+        WHERE ai.department IN ({ph})
         ORDER BY m.meeting_date DESC
         LIMIT ? OFFSET ?
-    """, (dept_name, per_page, (page - 1) * per_page)).fetchall()
+    """, matching_raw + [per_page, (page - 1) * per_page]).fetchall()
 
-    total = db.execute("SELECT COUNT(*) FROM agenda_items WHERE department = ?", (dept_name,)).fetchone()[0]
-    total_value = db.execute("SELECT SUM(amount) FROM agenda_items WHERE department = ? AND amount > 0",
-                             (dept_name,)).fetchone()[0]
+    total = db.execute(f"SELECT COUNT(*) FROM agenda_items WHERE department IN ({ph})",
+                       matching_raw).fetchone()[0]
+    total_value = db.execute(f"SELECT SUM(amount) FROM agenda_items WHERE department IN ({ph}) AND amount > 0",
+                             matching_raw).fetchone()[0]
 
     db.close()
-    return render_template('department_detail.html', dept_name=dept_name, items=items,
+    return render_template('department_detail.html', dept_name=norm_name, items=items,
                            top_vendors=top_vendors, type_breakdown=type_breakdown,
                            total=total, total_value=total_value, page=page, per_page=per_page)
 
