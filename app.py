@@ -1347,66 +1347,216 @@ def unsubscribe(token):
 
 
 # ─── RSS FEED ───
+# Every agenda item as its own RSS entry, filterable by query params:
+#   /feed.xml                           — all items, most recent first
+#   /feed.xml?type=contract             — only contracts
+#   /feed.xml?department=transportation — department name substring
+#   /feed.xml?vendor=cives             — vendor name substring
+#   /feed.xml?min_amount=1000000       — items >= $1M
+#   /feed.xml?meeting=123              — specific meeting ID
+#   /feed.xml?q=sole+source            — full-text search in description
+#   /feed.xml?year=2026                — only items from meetings in that year
+#   /feed.xml?limit=50                 — number of items (default 100, max 500)
+#   /feed.xml?consent=1                — only consent calendar items
+#   /feed.xml?late=1                   — only late items
+#   /feed.xml?tabled=1                 — only tabled items
+# Params can be combined: /feed.xml?type=contract&min_amount=5000000&year=2026
 
 @app.route('/feed.xml')
 @app.route('/rss')
 def rss_feed():
+    from notifications import format_currency
+    import xml.sax.saxutils as saxutils
+
     db = get_db()
-    meetings = db.execute("""
-        SELECT m.id, m.meeting_date, m.title, m.item_count,
-               COALESCE((SELECT SUM(amount) FROM agenda_items WHERE meeting_id = m.id AND amount IS NOT NULL), 0) as total_value,
-               COALESCE((SELECT COUNT(*) FROM agenda_items WHERE meeting_id = m.id AND item_type = 'contract'), 0) as contracts
-        FROM meetings m WHERE m.item_count > 0
-        ORDER BY m.meeting_date DESC LIMIT 20
-    """).fetchall()
+
+    # Build query from params
+    where = ["1=1"]
+    params = []
+
+    item_type = request.args.get('type', '').strip()
+    if item_type:
+        where.append("ai.item_type = ?")
+        params.append(item_type)
+
+    department = request.args.get('department', '').strip()
+    if department:
+        where.append("ai.department LIKE ?")
+        params.append(f"%{department}%")
+
+    vendor = request.args.get('vendor', '').strip()
+    if vendor:
+        where.append("ai.vendor LIKE ?")
+        params.append(f"%{vendor}%")
+
+    min_amount = request.args.get('min_amount', '').strip()
+    if min_amount and min_amount.isdigit():
+        where.append("ai.amount >= ?")
+        params.append(int(min_amount))
+
+    max_amount = request.args.get('max_amount', '').strip()
+    if max_amount and max_amount.isdigit():
+        where.append("ai.amount <= ?")
+        params.append(int(max_amount))
+
+    meeting_id = request.args.get('meeting', '').strip()
+    if meeting_id and meeting_id.isdigit():
+        where.append("ai.meeting_id = ?")
+        params.append(int(meeting_id))
+
+    q = request.args.get('q', '').strip()
+    if q:
+        where.append("ai.description LIKE ?")
+        params.append(f"%{q}%")
+
+    year = request.args.get('year', '').strip()
+    if year and year.isdigit():
+        where.append("m.meeting_date LIKE ?")
+        params.append(f"{year}%")
+
+    if request.args.get('consent') == '1':
+        where.append("ai.is_consent_calendar = 1")
+    if request.args.get('late') == '1':
+        where.append("ai.is_late_item = 1")
+    if request.args.get('tabled') == '1':
+        where.append("ai.is_tabled = 1")
+
+    limit = min(int(request.args.get('limit', '100')), 500) if request.args.get('limit', '').isdigit() else 100
+
+    where_sql = " AND ".join(where)
+
+    rows = db.execute(f"""
+        SELECT ai.id, ai.item_number, ai.sub_item, ai.description, ai.amount,
+               ai.vendor, ai.vendor_city, ai.vendor_state, ai.department,
+               ai.item_type, ai.funding_source, ai.is_consent_calendar,
+               ai.is_tabled, ai.is_late_item, ai.meeting_id,
+               ai.effective_date_start, ai.effective_date_end,
+               m.meeting_date, m.title as meeting_title
+        FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE {where_sql}
+        ORDER BY m.meeting_date DESC, ai.item_number ASC
+        LIMIT ?
+    """, params + [limit]).fetchall()
+
+    # Build feed title from active filters
+    filter_parts = []
+    if item_type:
+        filter_parts.append(item_type.title() + "s")
+    if department:
+        filter_parts.append(department.upper())
+    if vendor:
+        filter_parts.append(f"Vendor: {vendor}")
+    if min_amount:
+        filter_parts.append(f"≥{format_currency(int(min_amount))}")
+    if year:
+        filter_parts.append(year)
+    if q:
+        filter_parts.append(f'"{q}"')
+    feed_title = "Granite State G&amp;C Tracker"
+    if filter_parts:
+        feed_title += " — " + saxutils.escape(", ".join(filter_parts))
+
+    # Build self link with current params
+    qs = request.query_string.decode()
+    self_url = f"{SITE_URL}/feed.xml{'?' + saxutils.escape(qs) if qs else ''}"
 
     items_xml = ""
-    for m in meetings:
+    for r in rows:
+        item_num = r['item_number'] or ''
+        sub = r['sub_item'] or ''
+        desc_raw = r['description'] or ''
+        amount = r['amount']
+        dept = (r['department'] or '').replace('DEPARTMENT OF ', '').replace('NEW HAMPSHIRE ', '').title()
+        v = r['vendor'] or ''
+        v_city = r['vendor_city'] or ''
+        v_state = r['vendor_state'] or ''
+        itype = (r['item_type'] or 'other').title()
+        funding = r['funding_source'] or ''
+        meeting_date = r['meeting_date'] or ''
+        is_consent = r['is_consent_calendar']
+        is_tabled = r['is_tabled']
+        is_late = r['is_late_item']
+        start_date = r['effective_date_start'] or ''
+        end_date = r['effective_date_end'] or ''
+
         try:
-            dt = datetime.strptime(m['meeting_date'], '%Y-%m-%d')
+            dt = datetime.strptime(meeting_date, '%Y-%m-%d')
             pub_date = dt.strftime('%a, %d %b %Y 07:00:00 -0500')
             date_display = dt.strftime('%B %-d, %Y')
         except ValueError:
             pub_date = ""
-            date_display = m['meeting_date']
+            date_display = meeting_date
 
-        from notifications import format_currency
-        value_str = format_currency(m['total_value'])
-        link = f"{SITE_URL}/meeting/{m['id']}"
+        link = f"{SITE_URL}/meeting/{r['meeting_id']}#item-{item_num}{sub}"
+        guid = f"{SITE_URL}/item/{r['id']}"
 
-        # Get top 5 items for description
-        top = db.execute("""
-            SELECT description, amount, vendor, department FROM agenda_items
-            WHERE meeting_id = ? AND amount IS NOT NULL ORDER BY amount DESC LIMIT 5
-        """, (m['id'],)).fetchall()
-        desc_lines = [f"<p><strong>{m['item_count']} items</strong> | Total value: {value_str} | {m['contracts']} contracts</p><ul>"]
-        for t in top:
-            amt = format_currency(t['amount'])
-            desc = (t['description'] or '')[:150]
-            desc_lines.append(f"<li>{amt} — {desc}</li>")
-        desc_lines.append("</ul>")
-        description = "\n".join(desc_lines)
-        # Escape for XML CDATA
-        title_text = f"G&amp;C Agenda: {date_display} — {m['item_count']} Items, {value_str}"
+        # Title: amount + short description
+        amt_str = format_currency(amount) if amount else ""
+        desc_short = desc_raw[:120]
+        if amt_str:
+            title_text = saxutils.escape(f"#{item_num}{sub} {amt_str} — {desc_short}")
+        else:
+            title_text = saxutils.escape(f"#{item_num}{sub} {desc_short}")
+
+        # Rich description
+        meta = []
+        meta.append(f"<strong>Meeting:</strong> {saxutils.escape(date_display)}")
+        if dept:
+            meta.append(f"<strong>Department:</strong> {saxutils.escape(dept)}")
+        if v:
+            vendor_full = v
+            if v_city:
+                vendor_full += f", {v_city}"
+            if v_state:
+                vendor_full += f", {v_state}"
+            meta.append(f"<strong>Vendor:</strong> {saxutils.escape(vendor_full)}")
+        if amount:
+            meta.append(f"<strong>Amount:</strong> {saxutils.escape(format_currency(amount))}")
+        meta.append(f"<strong>Type:</strong> {saxutils.escape(itype)}")
+        if funding:
+            meta.append(f"<strong>Funding:</strong> {saxutils.escape(funding)}")
+        if start_date or end_date:
+            period = f"{start_date}" + (f" through {end_date}" if end_date else "")
+            meta.append(f"<strong>Period:</strong> {saxutils.escape(period)}")
+
+        flags = []
+        if is_consent:
+            flags.append("Consent Calendar")
+        if is_tabled:
+            flags.append("Tabled")
+        if is_late:
+            flags.append("Late Item")
+        if flags:
+            meta.append(f"<strong>Flags:</strong> {', '.join(flags)}")
+
+        description_html = "<br/>".join(meta)
+        description_html += f"<br/><br/>{saxutils.escape(desc_raw)}"
+
+        # Categories for filtering in RSS readers
+        categories = f'    <category>{saxutils.escape(itype)}</category>\n'
+        if dept:
+            categories += f'      <category>{saxutils.escape(dept)}</category>\n'
 
         items_xml += f"""    <item>
       <title>{title_text}</title>
       <link>{link}</link>
-      <guid isPermaLink="true">{link}</guid>
+      <guid isPermaLink="false">{guid}</guid>
       <pubDate>{pub_date}</pubDate>
-      <description><![CDATA[{description}]]></description>
-    </item>\n"""
+      <description><![CDATA[{description_html}]]></description>
+{categories}    </item>\n"""
 
     db.close()
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Granite State G&amp;C Tracker</title>
+    <title>{feed_title}</title>
     <link>{SITE_URL}</link>
-    <description>NH Governor &amp; Executive Council meeting agendas, contracts, and votes. Unofficial tracker.</description>
+    <description>NH Governor &amp; Executive Council agenda items — contracts, grants, nominations, and more. Unofficial tracker.</description>
     <language>en-us</language>
-    <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="{self_url}" rel="self" type="application/rss+xml"/>
+    <docs>Filters: type, department, vendor, min_amount, max_amount, meeting, q, year, consent, late, tabled, limit</docs>
 {items_xml}  </channel>
 </rss>"""
     return Response(xml, mimetype='application/rss+xml')
