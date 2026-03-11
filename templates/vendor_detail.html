@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ vendor_name }} — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="/vendors" class="back-link">&larr; All Vendors</a>
+    <h1 class="page-title mt-2">{{ vendor_name }}</h1>
+    <p class="page-sub">{{ items|length }} item{{ 's' if items|length != 1 else '' }} &middot; {{ total_value|currency }} total value</p>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Department</th>
+                    <th>Description</th>
+                    <th class="right">Amount</th>
+                    <th class="center">Outcome</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in items %}
+                <tr>
+                    <td style="white-space:nowrap;"><a href="/meeting/{{ i.meeting_id }}">{{ i.meeting_date|compact_date }}</a></td>
+                    <td class="num" style="text-align:left;">#{{ i.item_number }}{{ i.sub_item or '' }}</td>
+                    <td style="font-size:0.75rem;">{% if i.department %}<a href="/department/{{ i.department }}">{{ i.department[:30] }}</a>{% endif %}</td>
+                    <td style="max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8125rem;">{{ i.description[:200] if i.description else '' }}</td>
+                    <td class="num bold">{{ i.amount|currency }}</td>
+                    <td class="center">
+                        {% if i.outcome %}<span class="badge badge-{{ i.outcome }}">{{ i.outcome }}</span>{% endif %}
+                        {% if i.dissenting_votes %}<div class="dissent-note" style="margin-top:2px;font-size:0.625rem;">{{ i.dissenting_votes }}</div>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

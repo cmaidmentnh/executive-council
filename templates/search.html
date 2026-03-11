@@ -10,15 +10,21 @@
     <div class="search-box">
         <div class="search-input-wrap">
             <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" name="q" value="{{ query }}" placeholder="Search agenda items, vendors, departments, descriptions..."
+            <input type="text" name="q" value="{{ query }}" placeholder="Search agenda items, vendors, departments..."
                    class="input" autofocus>
         </div>
+        <select name="type" class="select" style="width:auto; min-width:120px;">
+            <option value="">All Types</option>
+            {% for t in ['contract', 'grant', 'amendment', 'lease', 'acceptance', 'informational'] %}
+            <option value="{{ t }}" {% if item_type == t %}selected{% endif %}>{{ t|capitalize }}</option>
+            {% endfor %}
+        </select>
         <button type="submit" class="btn btn-primary">Search</button>
     </div>
 </form>
 
 {% if query %}
-<p class="text-sm text-muted mb-4">{{ "{:,}".format(total) }} results for "<strong style="color:var(--c-text-mid);">{{ query }}</strong>"</p>
+<p class="text-sm text-muted mb-4">{{ "{:,}".format(total) }} results for "<strong style="color:var(--c-text-mid);">{{ query }}</strong>"{% if item_type %} ({{ item_type }}){% endif %}</p>
 
 {% if results %}
 <div class="card">
@@ -26,16 +32,19 @@
     <div class="agenda-row">
         <div style="display:flex; align-items:flex-start; gap:16px;">
             <div style="flex-shrink:0;">
-                <a href="/meeting/{{ r.meeting_id }}" class="link-accent mono text-sm" style="font-weight:600;">{{ r.meeting_date|short_date }}</a>
+                <a href="/meeting/{{ r.meeting_id }}" class="link-accent mono text-sm" style="font-weight:600;">{{ r.meeting_date|compact_date }}</a>
                 <div class="mono text-xs text-muted">#{{ r.item_number or '?' }}</div>
             </div>
             <div style="flex:1; min-width:0;">
                 {% if r.department %}
-                <div class="item-dept">{{ r.department }}</div>
+                <a href="/department/{{ r.department }}" class="item-dept" style="text-decoration:none;">{{ r.department }}</a>
+                {% endif %}
+                {% if r.item_type and r.item_type != 'other' %}
+                <span class="badge badge-sm" style="background:#f1f5f9; color:#475569; margin-left:4px; vertical-align:middle;">{{ r.item_type }}</span>
                 {% endif %}
                 <div class="item-desc">{{ r.description[:300] if r.description else '' }}{% if r.description and r.description|length > 300 %}...{% endif %}</div>
                 {% if r.vendor %}
-                <div class="item-vendor">{{ r.vendor }}</div>
+                <div class="item-vendor">Vendor: <a href="/vendor/{{ r.vendor }}" style="color:var(--c-accent); font-weight:600;">{{ r.vendor }}</a></div>
                 {% endif %}
             </div>
             {% if r.amount %}
@@ -49,11 +58,11 @@
 {% if total > per_page %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?q={{ query }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    <a href="?q={{ query }}&type={{ item_type }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
     {% if page * per_page < total %}
-    <a href="?q={{ query }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    <a href="?q={{ query }}&type={{ item_type }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
     {% endif %}
 </div>
 {% endif %}

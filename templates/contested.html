@@ -4,7 +4,16 @@
 {% block content %}
 <div class="mb-8">
     <h1 class="page-title">Contested Votes</h1>
-    <p class="page-sub">{{ "{:,}".format(total) }} actions where at least one councilor dissented</p>
+    <p class="page-sub">{{ "{:,}".format(total) }} actions where at least one councilor dissented{% if councilor %} — filtered by "{{ councilor }}"{% endif %}</p>
+</div>
+
+<!-- Councilor filter -->
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; align-items:center;">
+    <span class="text-sm text-muted" style="margin-right:4px;">Filter by dissenter:</span>
+    <a href="/contested" class="btn {% if not councilor %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:0.75rem; padding:4px 10px;">All</a>
+    {% for name in all_names %}
+    <a href="/contested?councilor={{ name|urlencode }}" class="btn {% if councilor == name %}btn-primary{% else %}btn-ghost{% endif %}" style="font-size:0.75rem; padding:4px 10px;">{{ name }}</a>
+    {% endfor %}
 </div>
 
 <div class="card">
@@ -15,18 +24,22 @@
                     <th>Date</th>
                     <th>Item</th>
                     <th>Description</th>
+                    <th>Vendor</th>
+                    <th class="right">Amount</th>
                     <th class="center">Outcome</th>
-                    <th class="right">Dissent</th>
+                    <th>Dissent</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in actions %}
                 <tr>
-                    <td style="white-space:nowrap;"><a href="/meeting/{{ a.meeting_id }}">{{ a.mdate|short_date }}</a></td>
+                    <td style="white-space:nowrap;"><a href="/meeting/{{ a.meeting_id }}">{{ a.mdate|compact_date }}</a></td>
                     <td class="num" style="text-align:left;">#{{ a.item_number or '?' }}</td>
-                    <td style="max-width:500px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ a.description[:250] if a.description else '' }}</td>
+                    <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8125rem;">{{ a.description[:200] if a.description else '' }}</td>
+                    <td style="font-size:0.75rem;">{% if a.vendor %}<a href="/vendor/{{ a.vendor }}">{{ a.vendor[:25] }}</a>{% endif %}</td>
+                    <td class="num">{{ a.amount|currency }}</td>
                     <td class="center"><span class="badge badge-{{ a.outcome or 'approved' }}">{{ a.outcome or '?' }}</span></td>
-                    <td class="right">
+                    <td>
                         <span style="display:inline-flex; align-items:center; gap:4px;">
                             <svg style="width:14px; height:14px; color:var(--c-red);" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
                             <span class="mono text-xs" style="font-weight:600; color:var(--c-red);">{{ a.dissenting_votes }}</span>
@@ -42,11 +55,11 @@
 {% if total > per_page %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    <a href="?councilor={{ councilor|urlencode }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
     {% if page * per_page < total %}
-    <a href="?page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    <a href="?councilor={{ councilor|urlencode }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
     {% endif %}
 </div>
 {% endif %}

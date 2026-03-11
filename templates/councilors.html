@@ -57,7 +57,7 @@
                     <td class="center"><span class="badge badge-{{ c.party|lower }}">{{ c.party }}</span></td>
                     <td class="num" style="text-align:left;">{{ c.start_date[:4] }}&ndash;{{ c.end_date[:4] if c.end_date else '' }}</td>
                     <td class="num">{{ "{:,}".format(c.total_votes) }}</td>
-                    <td class="num {% if c.no_votes > 50 %}bold text-red{% endif %}">{{ c.no_votes }}</td>
+                    <td class="num {% if c.no_votes > 50 %}bold{% endif %}" style="{% if c.no_votes > 50 %}color:var(--c-red);{% endif %}">{{ c.no_votes }}</td>
                     <td class="num">{% if c.total_votes > 0 %}{{ "%.1f"|format(100 * c.no_votes / c.total_votes) }}%{% endif %}</td>
                 </tr>
                 {% endfor %}

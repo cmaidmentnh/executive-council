@@ -22,9 +22,10 @@
                 <tr>
                     <th>Date</th>
                     <th class="right">Items</th>
-                    <th class="right">PDFs</th>
-                    <th class="right">Actions</th>
+                    <th class="right">Total Value</th>
+                    <th class="right">Votes</th>
                     <th class="right">Contested</th>
+                    <th class="right">PDFs</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,8 +33,14 @@
                 <tr>
                     <td><a href="/meeting/{{ m.id }}">{{ m.meeting_date|short_date }}</a></td>
                     <td class="num">{{ m.item_count }}</td>
-                    <td class="num">{{ m.pdfs }}</td>
-                    <td class="num">{{ m.actions }}</td>
+                    <td class="num">{{ m.total_value|currency }}</td>
+                    <td class="num">
+                        {% if m.votes == 0 %}
+                        <span class="text-muted" style="font-style:italic; font-size:0.75rem;">pending</span>
+                        {% else %}
+                        {{ m.votes }}
+                        {% endif %}
+                    </td>
                     <td class="right">
                         {% if m.contested > 0 %}
                         <span class="badge badge-denied">{{ m.contested }}</span>
@@ -41,6 +48,7 @@
                         <span class="text-muted">&mdash;</span>
                         {% endif %}
                     </td>
+                    <td class="num">{{ m.pdfs }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

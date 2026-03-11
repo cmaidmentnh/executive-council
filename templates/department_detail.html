@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ dept_name }} — NH Executive Council{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <a href="/departments" class="back-link">&larr; All Departments</a>
+    <h1 class="page-title mt-2">{{ dept_name }}</h1>
+    <p class="page-sub">{{ "{:,}".format(total) }} item{{ 's' if total != 1 else '' }} &middot; {{ total_value|currency }} total value</p>
+</div>
+
+<div class="grid-2 mb-8" style="gap:24px; align-items:start;">
+    <!-- Top Vendors -->
+    {% if top_vendors %}
+    <div class="card">
+        <div class="card-header">
+            <div class="section-title">Top Vendors</div>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th class="right">Items</th>
+                        <th class="right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in top_vendors %}
+                    <tr>
+                        <td><a href="/vendor/{{ v.vendor }}">{{ v.vendor }}</a></td>
+                        <td class="num">{{ v.item_count }}</td>
+                        <td class="num bold">{{ v.total_amount|currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Item Type Breakdown -->
+    {% if type_breakdown %}
+    <div class="card">
+        <div class="card-header">
+            <div class="section-title">Item Types</div>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th class="right">Count</th>
+                        <th class="right">Total Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in type_breakdown %}
+                    <tr>
+                        <td>{{ t.item_type or 'other' }}</td>
+                        <td class="num">{{ "{:,}".format(t.cnt) }}</td>
+                        <td class="num bold">{{ t.total|currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Recent Items -->
+<div class="card">
+    <div class="card-header">
+        <div class="section-title">Items</div>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Description</th>
+                    <th>Vendor</th>
+                    <th class="right">Amount</th>
+                    <th class="center">Outcome</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in items %}
+                <tr>
+                    <td style="white-space:nowrap;"><a href="/meeting/{{ i.meeting_id }}">{{ i.meeting_date|compact_date }}</a></td>
+                    <td class="num" style="text-align:left;">#{{ i.item_number }}{{ i.sub_item or '' }}</td>
+                    <td style="max-width:350px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8125rem;">{{ i.description[:200] if i.description else '' }}</td>
+                    <td style="font-size:0.75rem;">{% if i.vendor %}<a href="/vendor/{{ i.vendor }}">{{ i.vendor[:30] }}</a>{% endif %}</td>
+                    <td class="num bold">{{ i.amount|currency }}</td>
+                    <td class="center">
+                        {% if i.outcome %}<span class="badge badge-{{ i.outcome }}">{{ i.outcome }}</span>{% endif %}
+                        {% if i.dissenting_votes %}<div class="dissent-note" style="margin-top:2px;font-size:0.625rem;">{{ i.dissenting_votes }}</div>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if total > per_page %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
+    {% if page * per_page < total %}
+    <a href="?page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

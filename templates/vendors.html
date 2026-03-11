@@ -28,11 +28,11 @@
             <tbody>
                 {% for v in vendors %}
                 <tr>
-                    <td><a href="/search?q={{ v.vendor|urlencode }}">{{ v.vendor }}</a></td>
+                    <td><a href="/vendor/{{ v.vendor }}">{{ v.vendor }}</a></td>
                     <td class="num">{{ "{:,}".format(v.item_count) }}</td>
                     <td class="num bold">{{ v.total_amount|currency }}</td>
-                    <td class="num" style="text-align:left;">{{ v.first_seen|short_date }}</td>
-                    <td class="num" style="text-align:left;">{{ v.last_seen|short_date }}</td>
+                    <td class="num" style="text-align:left;">{{ v.first_seen|compact_date }}</td>
+                    <td class="num" style="text-align:left;">{{ v.last_seen|compact_date }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="mb-8">
     <a href="/councilors" class="back-link">&larr; All Councilors</a>
-    <div class="flex items-center gap-3 mt-3" style="display:flex; align-items:center; gap:12px; margin-top:10px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
         <h1 class="page-title">{{ councilor.name }}</h1>
         <span class="badge badge-{{ councilor.party|lower }}" style="font-size:0.75rem; padding:3px 10px;">{{ councilor.party }}</span>
     </div>
@@ -18,7 +18,8 @@
         <div style="display:flex; flex-wrap:wrap; gap:10px;">
             {% for t in terms %}
             <div style="background:var(--c-bg); border:1px solid var(--c-border-lt); border-radius:6px; padding:8px 14px;">
-                <div class="mono text-sm font-semibold" style="color:var(--c-navy);">{{ t.start_date|short_date }} &rarr; {{ t.end_date|short_date if t.end_date else 'Present' }}</div>
+                <div class="mono text-sm" style="font-weight:600; color:var(--c-navy);">{{ t.start_date|short_date }} &rarr; {{ t.end_date|short_date if t.end_date else 'Present' }}</div>
+                <div class="text-xs text-muted">District {{ t.district }}</div>
                 {% if t.notes %}<div class="text-xs text-muted" style="margin-top:2px;">{{ t.notes }}</div>{% endif %}
             </div>
             {% endfor %}
@@ -26,6 +27,7 @@
     </div>
 </div>
 
+<!-- Voting Record -->
 <div class="card mb-8">
     <div class="card-body">
         <div class="section-title mb-5">Voting Record</div>
@@ -48,7 +50,7 @@
 {% if dissents %}
 <div class="card">
     <div class="card-header">
-        <div class="section-title">Dissenting Votes <span class="text-muted">({{ dissents|length }}{% if dissents|length == 100 %}+{% endif %})</span></div>
+        <div class="section-title">Dissenting Votes <span class="text-muted">({{ dissents|length }}{% if dissents|length == 200 %}+{% endif %})</span></div>
     </div>
     <div class="table-wrap">
         <table class="data-table">
@@ -57,16 +59,20 @@
                     <th>Date</th>
                     <th>Item</th>
                     <th>Description</th>
-                    <th class="right">Outcome</th>
+                    <th>Vendor</th>
+                    <th class="right">Amount</th>
+                    <th class="center">Outcome</th>
                 </tr>
             </thead>
             <tbody>
                 {% for d in dissents %}
                 <tr>
-                    <td class="num" style="text-align:left; white-space:nowrap;">{{ d.meeting_date|short_date }}</td>
+                    <td style="white-space:nowrap;"><a href="/meeting/{{ d.meeting_id }}">{{ d.meeting_date|compact_date }}</a></td>
                     <td class="num" style="text-align:left;">#{{ d.item_number or '?' }}</td>
-                    <td style="max-width:500px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ d.description[:200] if d.description else '' }}</td>
-                    <td class="right"><span class="badge badge-{{ d.outcome or 'approved' }}">{{ d.outcome or '?' }}</span></td>
+                    <td style="max-width:350px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8125rem;">{{ d.description[:200] if d.description else '' }}</td>
+                    <td style="font-size:0.75rem;">{% if d.vendor %}<a href="/vendor/{{ d.vendor }}">{{ d.vendor[:25] }}</a>{% endif %}</td>
+                    <td class="num">{{ d.amount|currency }}</td>
+                    <td class="center"><span class="badge badge-{{ d.outcome or 'approved' }}">{{ d.outcome or '?' }}</span></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -75,4 +81,3 @@
 </div>
 {% endif %}
 {% endblock %}
-

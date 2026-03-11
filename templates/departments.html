@@ -7,17 +7,6 @@
     <p class="page-sub">State departments ranked by total contract and grant spending</p>
 </div>
 
-<div class="grid gap-6 mb-8" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
-    <div class="chart-wrap">
-        <div class="section-title mb-4">Top 10 by Spending</div>
-        <canvas id="deptChart" height="280"></canvas>
-    </div>
-    <div class="chart-wrap">
-        <div class="section-title mb-4">Top 15 by Item Count</div>
-        <canvas id="deptCountChart" height="280"></canvas>
-    </div>
-</div>
-
 <div class="card">
     <div class="table-wrap">
         <table class="data-table">
@@ -27,62 +16,23 @@
                     <th class="right">Items</th>
                     <th class="right">Meetings</th>
                     <th class="right">Total Spending</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
                 </tr>
             </thead>
             <tbody>
                 {% for d in departments %}
                 <tr>
-                    <td><a href="/search?q={{ d.department|urlencode }}">{{ d.department }}</a></td>
+                    <td><a href="/department/{{ d.department }}">{{ d.department }}</a></td>
                     <td class="num">{{ "{:,}".format(d.item_count) }}</td>
                     <td class="num">{{ d.meetings }}</td>
                     <td class="num bold">{{ d.total_amount|currency }}</td>
+                    <td class="num" style="text-align:left;">{{ d.first_seen|compact_date }}</td>
+                    <td class="num" style="text-align:left;">{{ d.last_seen|compact_date }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-const depts = {{ departments|map(attribute='department')|list|tojson }};
-const amounts = {{ departments|map(attribute='total_amount')|list|tojson }};
-const counts = {{ departments|map(attribute='item_count')|list|tojson }};
-const palette = ['#0c1929','#d4a017','#2563eb','#dc2626','#059669','#7c3aed','#ea580c','#0d9488','#4f46e5','#db2777'];
-
-new Chart(document.getElementById('deptChart'), {
-    type: 'doughnut',
-    data: {
-        labels: depts.slice(0, 10),
-        datasets: [{ data: amounts.slice(0, 10), backgroundColor: palette, borderWidth: 0, hoverOffset: 6 }]
-    },
-    options: {
-        responsive: true, cutout: '55%',
-        plugins: {
-            legend: { position: 'right', labels: { font: { family: 'Inter', size: 11 }, padding: 10, boxWidth: 10, boxHeight: 10, borderRadius: 2 } },
-            tooltip: {
-                backgroundColor: '#0c1929', cornerRadius: 6, padding: 10, bodyFont: { family: 'JetBrains Mono' },
-                callbacks: { label: ctx => { const v=ctx.raw; return v>=1e9?' $'+(v/1e9).toFixed(1)+'B':v>=1e6?' $'+(v/1e6).toFixed(0)+'M':' $'+v.toLocaleString(); } }
-            }
-        }
-    }
-});
-
-new Chart(document.getElementById('deptCountChart'), {
-    type: 'bar',
-    data: {
-        labels: depts.slice(0, 15).map(d => d.length > 30 ? d.substr(0,28) + '...' : d),
-        datasets: [{ data: counts.slice(0, 15), backgroundColor: '#0c1929', borderRadius: 3, borderSkipped: false }]
-    },
-    options: {
-        responsive: true, indexAxis: 'y',
-        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0c1929', cornerRadius: 6 } },
-        scales: {
-            x: { grid: { color: '#f1f5f9' }, border: { display: false }, ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#94a3b8', callback: v => v.toLocaleString() } },
-            y: { grid: { display: false }, border: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, color: '#475569' } }
-        }
-    }
-});
-</script>
 {% endblock %}

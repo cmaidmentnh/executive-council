@@ -2,28 +2,60 @@
 {% block title %}{{ meeting.meeting_date|short_date }} — NH Executive Council{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <a href="/meetings" class="back-link">&larr; All Meetings</a>
-    <h1 class="page-title mt-2">{{ meeting.meeting_date|short_date }}</h1>
-    <div class="flex items-center flex-wrap gap-3 mt-3" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;">
-        <span class="text-sm text-mid">{{ meeting.item_count }} items</span>
-        <span style="color:#cbd5e1;">|</span>
-        <a href="/export/meeting/{{ meeting.id }}" class="link-accent text-sm">Export CSV</a>
-        {% for doc in docs %}
-        <span style="color:#cbd5e1;">|</span>
-        <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ doc.filename }}"
-           class="link-accent text-sm" target="_blank">
-            {% if doc.doc_type == 'minutes' %}Minutes PDF{% elif doc.doc_type == 'quick_results' %}Quick Results{% else %}{{ doc.doc_type }}{% endif %}
-        </a>
-        {% endfor %}
+<div class="mb-6">
+    <!-- Prev/Next navigation -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        {% if prev_meeting %}
+        <a href="/meeting/{{ prev_meeting.id }}" class="back-link">&larr; {{ prev_meeting.meeting_date|short_date }}</a>
+        {% else %}<span></span>{% endif %}
+        <a href="/meetings" class="back-link">All Meetings</a>
+        {% if next_meeting %}
+        <a href="/meeting/{{ next_meeting.id }}" class="back-link">{{ next_meeting.meeting_date|short_date }} &rarr;</a>
+        {% else %}<span></span>{% endif %}
     </div>
+    <h1 class="page-title">{{ meeting.meeting_date|short_date }}</h1>
+</div>
+
+<!-- Meeting Summary Bar -->
+<div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:24px;">
+    <div class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">
+        <strong>{{ meeting.item_count }}</strong>&nbsp;items
+    </div>
+    {% if summary.total_value %}
+    <div class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">
+        <strong>{{ summary.total_value|currency }}</strong>&nbsp;total value
+    </div>
+    {% endif %}
+    {% if summary.contracts %}
+    <div class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">
+        {{ summary.contracts }} contracts
+    </div>
+    {% endif %}
+    {% if summary.grants %}
+    <div class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">
+        {{ summary.grants }} grants
+    </div>
+    {% endif %}
+    {% if summary.consent_items %}
+    <div class="badge" style="background:var(--c-bg); border:1px solid var(--c-border); padding:6px 12px; font-size:0.8125rem;">
+        {{ summary.consent_items }} consent calendar
+    </div>
+    {% endif %}
+    <a href="/export/meeting/{{ meeting.id }}" class="btn btn-ghost" style="font-size:0.75rem; padding:5px 12px;">Export CSV</a>
+    {% for doc in docs %}
+    <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ doc.filename }}" target="_blank" class="btn btn-ghost" style="font-size:0.75rem; padding:5px 12px;">
+        {% if doc.doc_type == 'minutes' %}Minutes{% elif doc.doc_type == 'quick_results' %}Quick Results{% else %}{{ doc.doc_type }}{% endif %}
+    </a>
+    {% endfor %}
 </div>
 
 <!-- Personnel Actions -->
 {% if other_actions %}
 <div class="card mb-6">
+    <div class="card-header">
+        <div class="section-title">Personnel Actions ({{ other_actions|length }})</div>
+    </div>
     <div class="card-body">
-        <div class="section-title mb-4">Personnel Actions</div>
         <div class="grid-2">
             {% for a in other_actions %}
             <div class="personnel-card">
@@ -55,19 +87,22 @@
     </div>
     {% for item in items %}
     <div class="agenda-row">
-        <div class="flex items-start gap-4" style="display:flex; align-items:flex-start; gap:16px;">
+        <div style="display:flex; align-items:flex-start; gap:16px;">
             <div style="flex-shrink:0; width:48px; text-align:right;">
                 <span class="item-num">#{{ item.item_number }}{{ item.sub_item or '' }}</span>
             </div>
             <div style="flex:1; min-width:0;">
-                <div class="flex items-start justify-between gap-4" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
                     <div style="min-width:0;">
                         {% if item.department %}
-                        <div class="item-dept">{{ item.department }}</div>
+                        <a href="/department/{{ item.department }}" class="item-dept" style="text-decoration:none;">{{ item.department }}</a>
                         {% endif %}
-                        <div class="item-desc">{{ item.description[:300] if item.description else '' }}{% if item.description and item.description|length > 300 %}...{% endif %}</div>
+                        {% if item.item_type and item.item_type != 'other' %}
+                        <span class="badge badge-sm" style="background:#f1f5f9; color:#475569; margin-left:4px; vertical-align:middle;">{{ item.item_type }}</span>
+                        {% endif %}
+                        <div class="item-desc">{{ item.description[:400] if item.description else '' }}{% if item.description and item.description|length > 400 %}...{% endif %}</div>
                         {% if item.vendor %}
-                        <div class="item-vendor">Vendor: <strong style="color:var(--c-text-mid);">{{ item.vendor }}</strong></div>
+                        <div class="item-vendor">Vendor: <a href="/vendor/{{ item.vendor }}" style="color:var(--c-accent); font-weight:600;">{{ item.vendor }}</a></div>
                         {% endif %}
                     </div>
                     <div style="flex-shrink:0; text-align:right;">
