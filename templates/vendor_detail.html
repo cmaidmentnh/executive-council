@@ -7,13 +7,82 @@
 <div class="mb-6">
     <a href="/vendors" class="text-xs font-bold text-blue-600 uppercase tracking-wide no-underline hover:underline">&larr; All Vendors</a>
     <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mt-3">{{ vendor_name }}</h1>
-    <div class="flex items-center gap-4 mt-2">
+    <div class="flex items-center gap-4 mt-2 flex-wrap">
         <span class="text-sm text-slate-500">{{ "{:,}".format(total) }} item{{ 's' if total != 1 else '' }}</span>
         <span class="font-mono text-sm font-bold text-slate-900">{{ total_value|currency }} total value</span>
+        {% if location and (location.vendor_city or location.vendor_state) %}
+        <span class="text-xs text-slate-400">{{ location.vendor_city or '' }}{% if location.vendor_city and location.vendor_state %}, {% endif %}{{ location.vendor_state or '' }}</span>
+        {% endif %}
+        {% if date_range %}
+        <span class="text-xs text-slate-400">{{ date_range.first_seen|compact_date }} &ndash; {{ date_range.last_seen|compact_date }}</span>
+        {% endif %}
     </div>
 </div>
 
+<!-- Summary cards -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
+    {% if top_depts %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Top Departments</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Department</th>
+                        <th class="text-right">Items</th>
+                        <th class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in top_depts %}
+                    <tr>
+                        <td class="text-xs"><a href="/department/{{ d.department|norm_dept|urlencode }}">{{ d.department|norm_dept }}</a></td>
+                        <td class="text-right font-mono text-sm text-slate-500">{{ d.cnt }}</td>
+                        <td class="text-right font-mono text-sm font-bold text-slate-900">{{ d.total|currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if type_breakdown %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Item Types</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th class="text-right">Count</th>
+                        <th class="text-right">Total Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in type_breakdown %}
+                    <tr>
+                        <td class="capitalize">{{ t.item_type or 'other' }}</td>
+                        <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(t.cnt) }}</td>
+                        <td class="text-right font-mono text-sm font-bold text-slate-900">{{ t.total|currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Items table -->
 <div class="card">
+    <div class="card-header">
+        <span class="card-title">Items</span>
+    </div>
     <div class="table-wrap">
         <table class="data-table">
             <thead>

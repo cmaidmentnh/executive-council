@@ -8,10 +8,31 @@
     <a href="/departments" class="text-xs font-bold text-blue-600 uppercase tracking-wide no-underline hover:underline">&larr; All Departments</a>
     <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight mt-3">{{ dept_name }}</h1>
     <div class="flex items-center gap-4 mt-2">
-        <span class="text-sm text-slate-500">{{ "{:,}".format(total) }} item{{ 's' if total != 1 else '' }}</span>
+        <span class="text-sm text-slate-500">{{ "{:,}".format(total) }} item{{ 's' if total != 1 else '' }}{% if year %} in {{ year }}{% endif %}</span>
         <span class="font-mono text-sm font-bold text-slate-900">{{ total_value|currency }} total value</span>
     </div>
 </div>
+
+<!-- Year filter -->
+{% if years|length > 1 %}
+<div class="flex items-center gap-2 flex-wrap mb-6">
+    <span class="text-xs text-slate-400 mr-1">Year:</span>
+    <a href="/department/{{ dept_name|urlencode }}" class="btn {% if not year %}btn-primary{% else %}btn-outline{% endif %} btn-sm">All</a>
+    {% for y in years[:8] %}
+    <a href="/department/{{ dept_name|urlencode }}?year={{ y.y }}" class="btn {% if year == y.y %}btn-primary{% else %}btn-outline{% endif %} btn-sm">{{ y.y }}</a>
+    {% endfor %}
+    {% if years|length > 8 %}
+    <form action="/department/{{ dept_name|urlencode }}" method="get" class="inline">
+        <select name="year" onchange="this.form.submit()" class="form-select text-xs py-1">
+            <option value="">More...</option>
+            {% for y in years[8:] %}
+            <option value="{{ y.y }}" {% if year == y.y %}selected{% endif %}>{{ y.y }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
 
 <!-- Top Vendors + Item Types side by side -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 items-start">
@@ -121,11 +142,11 @@
 {% if total > per_page %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
+    <a href="?year={{ year }}&page={{ page - 1 }}" class="page-btn">&larr; Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ (total / per_page)|round(0, 'ceil')|int }}</span>
     {% if page * per_page < total %}
-    <a href="?page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
+    <a href="?year={{ year }}&page={{ page + 1 }}" class="page-btn">Next &rarr;</a>
     {% endif %}
 </div>
 {% endif %}

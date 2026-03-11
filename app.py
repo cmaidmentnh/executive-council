@@ -529,10 +529,40 @@ def vendor_detail(vendor_name):
                        (normalized,)).fetchone()[0]
     total_value = db.execute(f"SELECT SUM(ai.amount) FROM agenda_items ai WHERE {vnorm} = ? AND ai.amount > 0",
                              (normalized,)).fetchone()[0] or 0
+
+    # Summary data
+    date_range = db.execute(f"""
+        SELECT MIN(m.meeting_date) as first_seen, MAX(m.meeting_date) as last_seen
+        FROM agenda_items ai JOIN meetings m ON m.id = ai.meeting_id
+        WHERE {vnorm} = ?
+    """, (normalized,)).fetchone()
+
+    top_depts = db.execute(f"""
+        SELECT ai.department, COUNT(*) as cnt, SUM(ai.amount) as total
+        FROM agenda_items ai WHERE {vnorm} = ? AND ai.department IS NOT NULL
+        GROUP BY ai.department ORDER BY total DESC LIMIT 5
+    """, (normalized,)).fetchall()
+
+    type_breakdown = db.execute(f"""
+        SELECT ai.item_type, COUNT(*) as cnt, SUM(ai.amount) as total
+        FROM agenda_items ai WHERE {vnorm} = ?
+        GROUP BY ai.item_type ORDER BY cnt DESC
+    """, (normalized,)).fetchall()
+
+    # Vendor location from most recent item
+    location = db.execute(f"""
+        SELECT ai.vendor_city, ai.vendor_state FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE {vnorm} = ? AND (ai.vendor_city IS NOT NULL OR ai.vendor_state IS NOT NULL)
+        ORDER BY m.meeting_date DESC LIMIT 1
+    """, (normalized,)).fetchone()
+
     db.close()
     return render_template('vendor_detail.html', vendor_name=normalized,
                            items=items, total_value=total_value,
-                           total=total, page=page, per_page=per_page)
+                           total=total, page=page, per_page=per_page,
+                           date_range=date_range, top_depts=top_depts,
+                           type_breakdown=type_breakdown, location=location)
 
 
 @app.route('/departments')
@@ -583,6 +613,7 @@ def departments():
 def department_detail(dept_name):
     db = get_db()
     page = int(request.args.get('page', 1))
+    year = request.args.get('year', '')
     per_page = 50
 
     # Find all raw department names that normalize to this name
@@ -593,23 +624,32 @@ def department_detail(dept_name):
         abort(404)
     ph = ','.join('?' * len(matching_raw))
 
+    year_filter = ""
+    year_params = []
+    if year:
+        year_filter = " AND SUBSTR(m.meeting_date, 1, 4) = ?"
+        year_params = [year]
+
     # Top vendors for this department (normalized names)
-    vnorm = VENDOR_NORM_SQL.format(col='vendor')
+    vnorm = VENDOR_NORM_SQL.format(col='ai.vendor')
     top_vendors = db.execute(f"""
-        SELECT {vnorm} as vendor, COUNT(*) as item_count, SUM(amount) as total_amount
-        FROM agenda_items
-        WHERE department IN ({ph}) AND vendor IS NOT NULL AND amount > 0
+        SELECT {vnorm} as vendor, COUNT(*) as item_count, SUM(ai.amount) as total_amount
+        FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.department IN ({ph}) AND ai.vendor IS NOT NULL AND ai.amount > 0{year_filter}
         GROUP BY {vnorm} ORDER BY total_amount DESC LIMIT 15
-    """, matching_raw).fetchall()
+    """, matching_raw + year_params).fetchall()
 
     # Item type breakdown
     type_breakdown = db.execute(f"""
-        SELECT item_type, COUNT(*) as cnt, SUM(amount) as total
-        FROM agenda_items WHERE department IN ({ph})
-        GROUP BY item_type ORDER BY cnt DESC
-    """, matching_raw).fetchall()
+        SELECT ai.item_type, COUNT(*) as cnt, SUM(ai.amount) as total
+        FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.department IN ({ph}){year_filter}
+        GROUP BY ai.item_type ORDER BY cnt DESC
+    """, matching_raw + year_params).fetchall()
 
-    # Recent items
+    # Items
     items = db.execute(f"""
         SELECT ai.*, m.meeting_date,
                ca.outcome, ca.dissenting_votes
@@ -622,20 +662,36 @@ def department_detail(dept_name):
             ORDER BY ca2.dissenting_votes IS NOT NULL DESC, ca2.id
             LIMIT 1
         )
-        WHERE ai.department IN ({ph})
+        WHERE ai.department IN ({ph}){year_filter}
         ORDER BY m.meeting_date DESC
         LIMIT ? OFFSET ?
-    """, matching_raw + [per_page, (page - 1) * per_page]).fetchall()
+    """, matching_raw + year_params + [per_page, (page - 1) * per_page]).fetchall()
 
-    total = db.execute(f"SELECT COUNT(*) FROM agenda_items WHERE department IN ({ph})",
-                       matching_raw).fetchone()[0]
-    total_value = db.execute(f"SELECT SUM(amount) FROM agenda_items WHERE department IN ({ph}) AND amount > 0",
-                             matching_raw).fetchone()[0]
+    total = db.execute(f"""
+        SELECT COUNT(*) FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.department IN ({ph}){year_filter}
+    """, matching_raw + year_params).fetchone()[0]
+    total_value = db.execute(f"""
+        SELECT SUM(ai.amount) FROM agenda_items ai
+        JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.department IN ({ph}) AND ai.amount > 0{year_filter}
+    """, matching_raw + year_params).fetchone()[0]
+
+    # Available years for this department
+    years = db.execute(f"""
+        SELECT DISTINCT SUBSTR(m.meeting_date, 1, 4) as y
+        FROM agenda_items ai JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.department IN ({ph})
+        ORDER BY y DESC
+    """, matching_raw).fetchall()
 
     db.close()
     return render_template('department_detail.html', dept_name=norm_name, items=items,
                            top_vendors=top_vendors, type_breakdown=type_breakdown,
-                           total=total, total_value=total_value, page=page, per_page=per_page)
+                           total=total, total_value=total_value or 0,
+                           page=page, per_page=per_page,
+                           year=year, years=years)
 
 
 @app.route('/items')
