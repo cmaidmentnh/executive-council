@@ -238,22 +238,38 @@ def build_notification_summary(meeting_id, conn):
     c.execute("SELECT COALESCE(SUM(amount), 0) as total FROM agenda_items WHERE meeting_id = ? AND amount IS NOT NULL", (meeting_id,))
     total_value = c.fetchone()['total']
 
-    c.execute("SELECT COUNT(*) as cnt FROM agenda_items WHERE meeting_id = ? AND item_type = 'contract'", (meeting_id,))
-    contracts = c.fetchone()['cnt']
+    # Type counts
+    c.execute("SELECT item_type, COUNT(*) as cnt, COALESCE(SUM(amount),0) as total FROM agenda_items WHERE meeting_id = ? GROUP BY item_type ORDER BY total DESC", (meeting_id,))
+    type_rows = c.fetchall()
+    type_breakdown = [{'item_type': r['item_type'], 'count': r['cnt'], 'total': r['total']} for r in type_rows]
 
-    c.execute("SELECT COUNT(*) as cnt FROM agenda_items WHERE meeting_id = ? AND item_type = 'grant'", (meeting_id,))
-    grants = c.fetchone()['cnt']
+    type_counts = {r['item_type']: r['cnt'] for r in type_rows}
+    contracts = type_counts.get('contract', 0)
+    grants = type_counts.get('grant', 0)
+    amendments = type_counts.get('amendment', 0)
+    nominations = type_counts.get('nomination', 0)
 
-    c.execute("SELECT COUNT(*) as cnt FROM agenda_items WHERE meeting_id = ? AND item_type = 'nomination'", (meeting_id,))
-    nominations = c.fetchone()['cnt']
+    # Calendar breakdown
+    c.execute("SELECT COALESCE(SUM(is_consent_calendar), 0) as consent, COUNT(*) - COALESCE(SUM(is_consent_calendar), 0) as regular, COALESCE(SUM(is_tabled), 0) as tabled, COALESCE(SUM(is_late_item), 0) as late FROM agenda_items WHERE meeting_id = ?", (meeting_id,))
+    cal = c.fetchone()
 
-    # Top 5 items by dollar amount
+    # Top 10 items by dollar amount
     c.execute("""
-        SELECT item_number, sub_item, description, amount
+        SELECT item_number, sub_item, department, vendor, description, amount
         FROM agenda_items WHERE meeting_id = ? AND amount IS NOT NULL
-        ORDER BY amount DESC LIMIT 5
+        ORDER BY amount DESC LIMIT 10
     """, (meeting_id,))
-    top_items = [{'description': r['description'], 'amount': r['amount']} for r in c.fetchall()]
+    top_items = [{'item_number': r['item_number'], 'sub_item': r['sub_item'],
+                  'department': r['department'], 'vendor': r['vendor'],
+                  'description': r['description'], 'amount': r['amount']} for r in c.fetchall()]
+
+    # Top departments by spending
+    c.execute("""
+        SELECT department, COUNT(*) as count, COALESCE(SUM(amount), 0) as total
+        FROM agenda_items WHERE meeting_id = ? AND department != ''
+        GROUP BY department ORDER BY total DESC LIMIT 8
+    """, (meeting_id,))
+    departments = [{'department': r['department'], 'count': r['count'], 'total': r['total']} for r in c.fetchall()]
 
     return {
         'meeting_id': meeting_id,
@@ -262,8 +278,15 @@ def build_notification_summary(meeting_id, conn):
         'total_value': total_value,
         'contracts': contracts,
         'grants': grants,
+        'amendments': amendments,
         'nominations': nominations,
         'top_items': top_items,
+        'departments': departments,
+        'type_breakdown': type_breakdown,
+        'consent_count': cal['consent'],
+        'regular_count': cal['regular'],
+        'tabled_count': cal['tabled'],
+        'late_count': cal['late'],
     }
 
 

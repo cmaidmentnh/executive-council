@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}NH Executive Council — Meetings, Votes & Contracts (2012-2026){% endblock %}
+{% block title %}Granite State G&C Tracker — NH Executive Council Meetings, Votes & Contracts (2012-2026){% endblock %}
 
 {% block content %}
 
 <!-- Hero search -->
 <div class="text-center py-12 -mt-8 mb-8 border-b border-slate-200 bg-slate-50 -mx-6 px-6 rounded-b-lg">
-    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">NH Executive Council</h1>
+    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Granite State G&amp;C Tracker</h1>
+    <p class="text-xs text-slate-400 mt-1">An unofficial resource for NH Executive Council data</p>
     <p class="text-slate-500 mt-1 text-sm">Search 14 years of meetings, contracts, votes and appointments.</p>
     <form action="/search" method="get" class="max-w-xl mx-auto mt-6 flex gap-2">
         <input type="text" name="q" placeholder="Search contracts, vendors, departments..."
