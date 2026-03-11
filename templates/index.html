@@ -3,41 +3,38 @@
 
 {% block content %}
 
-<!-- Hero / Heading -->
-<section class="mb-12">
-    <h1 class="page-title">Governor &amp; Executive Council</h1>
-    <p class="page-sub">14&nbsp;years of meetings, votes, contracts and appointments — fully searchable and exportable.</p>
-</section>
+<!-- Hero with dark gradient background -->
+<section class="hero">
+    <div style="position:relative; z-index:1;">
+        <h1 class="page-title">Governor &amp; Executive Council</h1>
+        <p class="page-sub">14&nbsp;years of meetings, votes, contracts and appointments — fully searchable and exportable.</p>
 
-<!-- Quick-stats -->
-<section class="grid-4 mb-10">
-    <div class="stat-card">
-        <div class="stat-label">Meetings</div>
-        <div class="stat-value">{{ "{:,}".format(stats.meetings) }}</div>
-        <div class="stat-note">2012&nbsp;&ndash;&nbsp;2026</div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-label">Agenda Items</div>
-        <div class="stat-value">{{ "{:,}".format(stats.agenda_items) }}</div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-label">Total Contract Value</div>
-        <div class="stat-value">{{ stats.total_spending|currency }}</div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-label">Contested Votes</div>
-        <div class="stat-value danger">{{ "{:,}".format(stats.contested) }}</div>
+        <div class="grid-4" style="margin-top:2.5rem;">
+            <div class="stat-card">
+                <div class="stat-label">Meetings</div>
+                <div class="stat-value">{{ "{:,}".format(stats.meetings) }}</div>
+                <div class="stat-note">2012&nbsp;&ndash;&nbsp;2026</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Agenda Items</div>
+                <div class="stat-value">{{ "{:,}".format(stats.agenda_items) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Contract Value</div>
+                <div class="stat-value">{{ stats.total_spending|currency }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Contested Votes</div>
+                <div class="stat-value danger">{{ "{:,}".format(stats.contested) }}</div>
+            </div>
+        </div>
     </div>
 </section>
 
 <!-- Two column layout -->
-<section class="grid-2" style="gap:24px; align-items:start;">
+<section class="grid-2 mt-10" style="gap:24px; align-items:start;">
     <!-- Left column -->
     <div class="flex flex-col gap-6">
-        <!-- Latest meeting -->
         {% if latest %}
         <div class="card">
             <div class="card-header">
@@ -51,7 +48,6 @@
                     <span class="badge badge-withdrawn">Votes pending</span>
                     {% endif %}
                 </div>
-
                 <div class="flex flex-wrap gap-8 mt-5">
                     <div>
                         <div class="stat-label">Items</div>
@@ -63,9 +59,7 @@
                     </div>
                     <div>
                         <div class="stat-label">Contested</div>
-                        <div class="mono font-bold text-xl" style="{% if latest.contested > 0 %}color:var(--c-red);{% else %}color:var(--c-navy);{% endif %}">
-                            {{ latest.contested }}
-                        </div>
+                        <div class="mono font-bold text-xl" style="{% if latest.contested > 0 %}color:var(--c-red);{% else %}color:var(--c-navy);{% endif %}">{{ latest.contested }}</div>
                     </div>
                     {% if latest.total_value %}
                     <div>
@@ -84,7 +78,6 @@
         </div>
         {% endif %}
 
-        <!-- Recent meetings -->
         <div class="card">
             <div class="card-header">
                 <span class="section-title">Recent Meetings</span>
@@ -112,7 +105,6 @@
 
     <!-- Right column -->
     <div class="flex flex-col gap-6">
-        <!-- Current council -->
         <div class="card">
             <div class="card-header">
                 <span class="section-title">Current Council</span>
@@ -128,14 +120,13 @@
                     </div>
                     <div class="mono text-muted text-xs">
                         {{ c.no_votes }} dissent{{ 's' if c.no_votes != 1 else '' }}
-                        <span class="text-muted">({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)</span>
+                        <span>({{ "%.1f"|format(100 * c.no_votes / c.total_votes if c.total_votes else 0) }}%)</span>
                     </div>
                 </a>
                 {% endfor %}
             </div>
         </div>
 
-        <!-- Recent contested votes -->
         <div class="card">
             <div class="card-header">
                 <span class="section-title">Recent Contested Votes</span>
@@ -161,27 +152,24 @@
 </section>
 
 <!-- Quick navigation tiles -->
-<section class="grid-4 mt-10">
-    <a href="/search" class="stat-card text-center py-8">
-        <div class="text-2xl mb-1">&#128269;</div>
+<section class="grid-4 mt-12">
+    <a href="/search" class="stat-card text-center py-10">
+        <div class="text-3xl mb-2">&#128269;</div>
         <div class="font-bold" style="color:var(--c-navy);">Search</div>
         <div class="text-muted text-xs">Contracts, vendors, topics</div>
     </a>
-
-    <a href="/vendors" class="stat-card text-center py-8">
-        <div class="text-2xl mb-1">&#127970;</div>
+    <a href="/vendors" class="stat-card text-center py-10">
+        <div class="text-3xl mb-2">&#127970;</div>
         <div class="font-bold" style="color:var(--c-navy);">Vendors</div>
         <div class="text-muted text-xs">{{ "{:,}".format(stats.vendors) }} companies</div>
     </a>
-
-    <a href="/departments" class="stat-card text-center py-8">
-        <div class="text-2xl mb-1">&#127963;</div>
+    <a href="/departments" class="stat-card text-center py-10">
+        <div class="text-3xl mb-2">&#127963;</div>
         <div class="font-bold" style="color:var(--c-navy);">Departments</div>
         <div class="text-muted text-xs">State agency spending</div>
     </a>
-
-    <a href="/nominations" class="stat-card text-center py-8">
-        <div class="text-2xl mb-1">&#128100;</div>
+    <a href="/nominations" class="stat-card text-center py-10">
+        <div class="text-3xl mb-2">&#128100;</div>
         <div class="font-bold" style="color:var(--c-navy);">Personnel</div>
         <div class="text-muted text-xs">Nominations &amp; confirmations</div>
     </a>
