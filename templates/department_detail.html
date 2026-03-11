@@ -94,6 +94,17 @@
     {% endif %}
 </div>
 
+{% if yearly_spending and yearly_spending|length > 1 and not year %}
+<div class="card mb-8">
+    <div class="card-header">
+        <span class="card-title">Spending by Year</span>
+    </div>
+    <div class="card-body" style="height:220px;">
+        <canvas id="deptChart"></canvas>
+    </div>
+</div>
+{% endif %}
+
 <!-- Items table -->
 <div class="card">
     <div class="card-header">
@@ -151,4 +162,65 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+{% if yearly_spending and yearly_spending|length > 1 and not year %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('deptChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for y in yearly_spending %}'{{ y.year }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Spending',
+            data: [{% for y in yearly_spending %}{{ y.spending }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(59, 130, 246, 0.7)',
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        let v = ctx.parsed.y;
+                        if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+                        if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+                        return '$' + v.toLocaleString();
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(v) {
+                        if (v >= 1e9) return '$' + (v/1e9).toFixed(0) + 'B';
+                        if (v >= 1e6) return '$' + (v/1e6).toFixed(0) + 'M';
+                        return '$' + v;
+                    },
+                    font: { family: 'JetBrains Mono', size: 11 }
+                },
+                grid: { color: 'rgba(0,0,0,0.04)' }
+            },
+            x: {
+                ticks: { font: { family: 'JetBrains Mono', size: 11 } },
+                grid: { display: false }
+            }
+        },
+        onClick: function(e, elements) {
+            if (elements.length > 0) {
+                let year = this.data.labels[elements[0].index];
+                window.location.search = '?year=' + year;
+            }
+        }
+    }
+});
+</script>
+{% endif %}
 {% endblock %}

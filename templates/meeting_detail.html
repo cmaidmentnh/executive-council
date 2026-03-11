@@ -22,7 +22,7 @@
 <!-- Summary strip -->
 <div class="flex flex-wrap items-center gap-2 mb-8">
     <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-sm">
-        <strong>{{ meeting.item_count }}</strong> items
+        <strong>{{ items|length }}</strong> items
     </span>
     {% if summary.total_value %}
     <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-sm font-mono font-bold">
@@ -156,5 +156,25 @@
     </div>
     {% endif %}
 </div>
+
+{% if orphan_pdfs %}
+<div class="card mt-6">
+    <div class="card-header">
+        <span class="card-title">Additional Documents ({{ orphan_pdfs|length }})</span>
+        <span class="text-xs text-slate-400">Items not yet parsed from agenda</span>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for pdf in orphan_pdfs %}
+        <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ pdf.filename }}" target="_blank" class="flex items-center justify-between px-5 py-3 hover:bg-blue-50 no-underline transition-colors">
+            <div class="flex items-center gap-3">
+                <span class="font-mono text-xs font-bold text-slate-400">#{{ pdf.item_number }}{{ pdf.sub_item or '' }}</span>
+                <span class="text-sm text-slate-700">{{ pdf.filename }}</span>
+            </div>
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 {% endblock %}

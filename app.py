@@ -157,7 +157,8 @@ def index():
 
     # Latest meeting with full details
     latest = db.execute("""
-        SELECT m.id, m.meeting_date, m.item_count,
+        SELECT m.id, m.meeting_date,
+               (SELECT COUNT(*) FROM agenda_items WHERE meeting_id = m.id) as item_count,
                (SELECT COUNT(*) FROM council_actions WHERE meeting_id = m.id AND action_type = 'vote') as votes,
                (SELECT COUNT(*) FROM council_actions WHERE meeting_id = m.id
                 AND dissenting_votes IS NOT NULL AND dissenting_votes <> '') as contested,
@@ -169,7 +170,8 @@ def index():
 
     # Recent meetings
     recent = db.execute("""
-        SELECT m.id, m.meeting_date, m.item_count,
+        SELECT m.id, m.meeting_date,
+               (SELECT COUNT(*) FROM agenda_items WHERE meeting_id = m.id) as item_count,
                (SELECT COUNT(*) FROM council_actions WHERE meeting_id = m.id AND action_type = 'vote') as votes,
                (SELECT COUNT(*) FROM council_actions WHERE meeting_id = m.id
                 AND dissenting_votes IS NOT NULL AND dissenting_votes <> '') as contested
@@ -234,7 +236,8 @@ def meetings():
     per_page = 50
 
     query = """
-        SELECT m.id, m.meeting_date, m.title, m.item_count,
+        SELECT m.id, m.meeting_date, m.title,
+               (SELECT COUNT(*) FROM agenda_items WHERE meeting_id = m.id) as item_count,
                (SELECT COUNT(*) FROM council_actions WHERE meeting_id = m.id AND action_type = 'vote') as votes,
                (SELECT COUNT(*) FROM council_actions WHERE meeting_id = m.id
                 AND dissenting_votes IS NOT NULL AND dissenting_votes <> '') as contested,
@@ -310,6 +313,19 @@ def meeting_detail(meeting_id):
         FROM agenda_items ai WHERE ai.meeting_id = ?
     """, (meeting_id,)).fetchone()
 
+    # Orphan PDFs — downloads with no matching agenda_item
+    orphan_pdfs = db.execute("""
+        SELECT id2.item_number, id2.sub_item, id2.filename
+        FROM item_downloads id2
+        WHERE id2.meeting_id = ?
+          AND NOT EXISTS (
+              SELECT 1 FROM agenda_items ai
+              WHERE ai.meeting_id = id2.meeting_id AND ai.item_number = id2.item_number
+          )
+        ORDER BY CAST(CASE WHEN id2.item_number GLOB '[0-9]*' THEN id2.item_number ELSE '9999' END AS INTEGER),
+                 id2.item_number, id2.sub_item
+    """, (meeting_id,)).fetchall()
+
     # Prev/next meetings
     prev_meeting = db.execute(
         "SELECT id, meeting_date FROM meetings WHERE meeting_date < ? ORDER BY meeting_date DESC LIMIT 1",
@@ -321,7 +337,8 @@ def meeting_detail(meeting_id):
     db.close()
     return render_template('meeting_detail.html', meeting=meeting, items=items,
                            other_actions=other_actions, docs=docs, r2_base=R2_BASE,
-                           summary=summary, prev_meeting=prev_meeting, next_meeting=next_meeting)
+                           summary=summary, prev_meeting=prev_meeting, next_meeting=next_meeting,
+                           orphan_pdfs=orphan_pdfs)
 
 
 @app.route('/item/<int:item_id>')
@@ -698,12 +715,22 @@ def department_detail(dept_name):
         ORDER BY y DESC
     """, matching_raw).fetchall()
 
+    # Yearly spending for chart
+    yearly_spending = db.execute(f"""
+        SELECT SUBSTR(m.meeting_date, 1, 4) as year, SUM(ai.amount) as spending
+        FROM agenda_items ai JOIN meetings m ON m.id = ai.meeting_id
+        WHERE ai.department IN ({ph}) AND ai.amount > 0
+        GROUP BY SUBSTR(m.meeting_date, 1, 4)
+        ORDER BY year
+    """, matching_raw).fetchall()
+
     db.close()
     return render_template('department_detail.html', dept_name=norm_name, items=items,
                            top_vendors=top_vendors, type_breakdown=type_breakdown,
                            total=total, total_value=total_value or 0,
                            page=page, per_page=per_page,
-                           year=year, years=years)
+                           year=year, years=years,
+                           yearly_spending=yearly_spending)
 
 
 @app.route('/items')
