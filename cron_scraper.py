@@ -123,9 +123,9 @@ def find_new_meetings(meetings, conn):
     existing_nids = set()
     c.execute("SELECT nid FROM meetings")
     for row in c.fetchall():
-        existing_nids.add(row['nid'])
+        existing_nids.add(str(row['nid']))
 
-    new = [m for m in meetings if m['nid'] not in existing_nids]
+    new = [m for m in meetings if str(m['nid']) not in existing_nids]
     return new
 
 
