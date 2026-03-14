@@ -19,6 +19,9 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
+
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env")
 from playwright.sync_api import sync_playwright
 
 import boto3
@@ -40,11 +43,11 @@ DOWNLOAD_DIR = Path(__file__).parent / "downloads"
 BASE_URL = "https://www.sos.nh.gov"
 LOG_PATH = Path(__file__).parent / "cron_scraper.log"
 
-# R2 config
-R2_BUCKET = "executive-council-docs"
-R2_ENDPOINT = "https://ecdb5e1e7f77f60c63411ccbf171edc8.r2.cloudflarestorage.com"
-R2_ACCESS_KEY = "985056ec54f1b907ba443ba8631aa24a"
-R2_SECRET_KEY = "8f1e8baedeb2b0866048aeff6e23458e018f45f27d11672f139eef12870a1d62"
+# R2 config (loaded from .env)
+R2_BUCKET = os.environ.get("R2_BUCKET", "executive-council-docs")
+R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "")
+R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "")
+R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "")
 
 # Set up logging
 logging.basicConfig(
