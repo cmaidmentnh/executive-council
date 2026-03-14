@@ -546,6 +546,87 @@ table { border-collapse: collapse; }
   color: var(--text-muted);
 }
 
+/* ── Mobile ─────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* Layout */
+  .container { padding: 0 12px; }
+  .page-wrap { padding: 16px 0 40px; }
+
+  /* Cards */
+  .card-header { padding: 10px 12px; }
+  .card-body { padding: 12px; }
+  .card-title { font-size: 0.72rem; }
+
+  /* Stat grid */
+  .stat-grid { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+  .stat-cell { padding: 10px 8px; }
+  .stat-value { font-size: 1.15rem; }
+  .stat-label { font-size: 0.68rem; }
+
+  /* Tables — tighter spacing */
+  .data-table { font-size: 0.78rem; }
+  .data-table thead th { padding: 8px 8px; font-size: 0.62rem; }
+  .data-table tbody td { padding: 8px 8px; }
+
+  /* Hide low-priority columns on mobile */
+  .data-table .hide-mobile { display: none; }
+
+  /* Description column: override inline max-width */
+  .data-table td[style*="max-width"] { max-width: 180px !important; }
+
+  /* Badges */
+  .badge { font-size: 0.68rem; padding: 2px 6px; }
+  .badge-type { font-size: 0.62rem; }
+
+  /* Buttons */
+  .btn { padding: 6px 10px; font-size: 0.75rem; }
+  .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
+
+  /* Inputs — override fixed inline widths */
+  .form-input, .form-select { max-width: 100%; }
+  input[style*="width:200px"],
+  input[style*="width:220px"],
+  input[style*="width:180px"] { width: 100% !important; max-width: 100% !important; }
+  select[style*="min-width:130px"],
+  select[style*="min-width:100px"] { min-width: 0 !important; width: auto; }
+
+  /* Nav links in mobile menu */
+  .nav-link { font-size: 0.88rem; padding: 12px 12px; }
+
+  /* Footer */
+  .site-footer { margin-top: 32px; font-size: 0.72rem; }
+
+  /* PDF embed */
+  .pdf-embed { height: 50vh; }
+
+  /* Pagination */
+  .pagination { gap: 6px; margin-top: 20px; }
+  .page-btn { padding: 6px 10px; font-size: 0.75rem; }
+
+  /* Vote chips */
+  .vote-chip { font-size: 0.72rem; padding: 3px 8px; }
+
+  /* Councilor cards */
+  .councilor-card { padding: 12px; }
+
+  /* Dissent */
+  .dissent-tag { font-size: 0.68rem; }
+
+  /* Empty state */
+  .empty-state { padding: 32px 12px; }
+}
+
+/* Extra-small phones */
+@media (max-width: 380px) {
+  .container { padding: 0 8px; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-value { font-size: 1rem; }
+  .data-table { font-size: 0.72rem; }
+  .data-table thead th { padding: 6px 6px; }
+  .data-table tbody td { padding: 6px 6px; }
+}
+
 /* ── Print ──────────────────────────────────────────────────────── */
 
 @media print {

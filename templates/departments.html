@@ -21,10 +21,10 @@
                 <tr>
                     <th>Department</th>
                     <th class="text-right">Items</th>
-                    <th class="text-right">Meetings</th>
+                    <th class="text-right hide-mobile">Meetings</th>
                     <th class="text-right">Total Spending</th>
-                    <th>First Seen</th>
-                    <th>Last Seen</th>
+                    <th class="hide-mobile">First Seen</th>
+                    <th class="hide-mobile">Last Seen</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,10 +32,10 @@
                 <tr class="clickable-row" onclick="window.location='/department/{{ d.department|urlencode }}'">
                     <td><a href="/department/{{ d.department|urlencode }}">{{ d.department }}</a></td>
                     <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(d.item_count) }}</td>
-                    <td class="text-right font-mono text-sm text-slate-500">{{ d.meetings }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500 hide-mobile">{{ d.meetings }}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ d.total_amount|currency }}</td>
-                    <td class="font-mono text-sm text-slate-500">{{ d.first_seen|compact_date }}</td>
-                    <td class="font-mono text-sm text-slate-500">{{ d.last_seen|compact_date }}</td>
+                    <td class="font-mono text-sm text-slate-500 hide-mobile">{{ d.first_seen|compact_date }}</td>
+                    <td class="font-mono text-sm text-slate-500 hide-mobile">{{ d.last_seen|compact_date }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

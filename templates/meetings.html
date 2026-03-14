@@ -36,8 +36,8 @@
                     <th>Date</th>
                     <th class="text-right">Items</th>
                     <th class="text-right">Value</th>
-                    <th class="text-right">Votes</th>
-                    <th class="text-right">PDFs</th>
+                    <th class="text-right hide-mobile">Votes</th>
+                    <th class="text-right hide-mobile">PDFs</th>
                     <th class="text-center">Status</th>
                 </tr>
             </thead>
@@ -49,8 +49,8 @@
                     </td>
                     <td class="text-right font-mono text-sm text-slate-500">{{ m.item_count }}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ m.total_value|currency }}</td>
-                    <td class="text-right font-mono text-sm text-slate-500">{{ m.votes }}</td>
-                    <td class="text-right font-mono text-sm text-slate-500">{{ m.pdfs }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500 hide-mobile">{{ m.votes }}</td>
+                    <td class="text-right font-mono text-sm text-slate-500 hide-mobile">{{ m.pdfs }}</td>
                     <td class="text-center">
                         {% if m.votes == 0 %}
                         <span class="badge badge-withdrawn">pending</span>

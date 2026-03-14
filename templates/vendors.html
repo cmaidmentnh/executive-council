@@ -31,8 +31,8 @@
                     <th>Vendor</th>
                     <th class="text-right">Items</th>
                     <th class="text-right">Total Value</th>
-                    <th>First Seen</th>
-                    <th>Last Seen</th>
+                    <th class="hide-mobile">First Seen</th>
+                    <th class="hide-mobile">Last Seen</th>
                 </tr>
             </thead>
             <tbody>
@@ -41,8 +41,8 @@
                     <td><a href="/vendor/{{ v.vendor|urlencode }}">{{ v.vendor }}</a></td>
                     <td class="text-right font-mono text-sm text-slate-500">{{ "{:,}".format(v.item_count) }}</td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900">{{ v.total_amount|currency }}</td>
-                    <td class="font-mono text-sm text-slate-500">{{ v.first_seen|compact_date }}</td>
-                    <td class="font-mono text-sm text-slate-500">{{ v.last_seen|compact_date }}</td>
+                    <td class="font-mono text-sm text-slate-500 hide-mobile">{{ v.first_seen|compact_date }}</td>
+                    <td class="font-mono text-sm text-slate-500 hide-mobile">{{ v.last_seen|compact_date }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

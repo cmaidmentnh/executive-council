@@ -36,8 +36,8 @@
                     <th>Date</th>
                     <th>Type</th>
                     <th>Person</th>
-                    <th>Position</th>
-                    <th>Details</th>
+                    <th class="hide-mobile">Position</th>
+                    <th class="hide-mobile">Details</th>
                     <th class="text-center">Outcome</th>
                 </tr>
             </thead>
@@ -58,8 +58,8 @@
                         {{ a.person_name or '' }}
                         {% if a.person_city %}<span class="text-slate-400 font-normal text-xs">, {{ a.person_city }}</span>{% endif %}
                     </td>
-                    <td style="max-width:250px;" class="text-[13px] truncate">{{ a.position_title or '' }}</td>
-                    <td class="text-xs text-slate-500 space-y-0.5">
+                    <td style="max-width:250px;" class="text-[13px] truncate hide-mobile">{{ a.position_title or '' }}</td>
+                    <td class="text-xs text-slate-500 space-y-0.5 hide-mobile">
                         {% if a.rsa_reference %}<div class="font-mono">{{ a.rsa_reference }}</div>{% endif %}
                         {% if a.effective_date %}<div>{{ a.effective_date }}{% if a.term_end %} &mdash; {{ a.term_end }}{% endif %}</div>{% endif %}
                         {% if a.salary %}<div class="font-semibold text-slate-600">{{ a.salary }}</div>{% endif %}

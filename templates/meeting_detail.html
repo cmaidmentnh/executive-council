@@ -98,12 +98,12 @@
             <thead>
                 <tr>
                     <th style="width:55px;">#</th>
-                    <th>Department</th>
+                    <th class="hide-mobile">Department</th>
                     <th>Description</th>
-                    <th>Vendor</th>
+                    <th class="hide-mobile">Vendor</th>
                     <th class="text-right">Amount</th>
                     <th class="text-center">Vote</th>
-                    <th style="width:40px;"></th>
+                    <th style="width:40px;" class="hide-mobile"></th>
                 </tr>
             </thead>
             <tbody>
@@ -112,7 +112,7 @@
                     <td>
                         <span class="font-mono text-xs font-bold text-slate-400">{{ item.item_number }}{{ item.sub_item or '' }}</span>
                     </td>
-                    <td class="text-xs whitespace-nowrap">
+                    <td class="text-xs whitespace-nowrap hide-mobile">
                         {% if item.department %}
                         <a href="/department/{{ item.department|norm_dept|urlencode }}" onclick="event.stopPropagation()">{{ item.department|norm_dept }}</a>
                         {% endif %}
@@ -125,7 +125,7 @@
                             <div class="text-[13px] leading-snug line-clamp-2">{{ item.description[:300] if item.description else '' }}</div>
                         </a>
                     </td>
-                    <td class="text-xs">
+                    <td class="text-xs hide-mobile">
                         {% if item.vendor %}
                         <a href="/vendor/{{ item.vendor|urlencode }}" onclick="event.stopPropagation()">{{ item.vendor[:30] }}</a>
                         {% endif %}
@@ -142,7 +142,7 @@
                         </div>
                         {% endif %}
                     </td>
-                    <td>
+                    <td class="hide-mobile">
                         {% if item.pdf_filename %}
                         <a href="{{ r2_base }}/{{ meeting.meeting_date }}/{{ item.pdf_filename }}" target="_blank" class="text-blue-600 hover:text-blue-800" onclick="event.stopPropagation()" title="View PDF">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>

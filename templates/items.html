@@ -46,11 +46,11 @@
                 <tr>
                     <th>Date</th>
                     <th>#</th>
-                    <th>Department</th>
+                    <th class="hide-mobile">Department</th>
                     <th>Description</th>
-                    <th>Vendor</th>
+                    <th class="hide-mobile">Vendor</th>
                     <th class="text-right">Amount</th>
-                    <th class="text-center">Type</th>
+                    <th class="text-center hide-mobile">Type</th>
                     <th class="text-center">Vote</th>
                 </tr>
             </thead>
@@ -61,15 +61,15 @@
                         <a href="/meeting/{{ i.meeting_id }}" onclick="event.stopPropagation()">{{ i.meeting_date|compact_date }}</a>
                     </td>
                     <td class="font-mono text-xs font-bold text-slate-400">{{ i.item_number }}{{ i.sub_item or '' }}</td>
-                    <td class="text-xs whitespace-nowrap">
+                    <td class="text-xs whitespace-nowrap hide-mobile">
                         {% if i.department %}<a href="/department/{{ i.department|norm_dept|urlencode }}" onclick="event.stopPropagation()">{{ (i.department|norm_dept)[:25] }}</a>{% endif %}
                     </td>
                     <td style="max-width:350px;" class="text-[13px] truncate">{{ i.description[:200] if i.description else '' }}</td>
-                    <td class="text-xs">
+                    <td class="text-xs hide-mobile">
                         {% if i.vendor %}<a href="/vendor/{{ i.vendor|urlencode }}" onclick="event.stopPropagation()">{{ i.vendor[:25] }}</a>{% endif %}
                     </td>
                     <td class="text-right font-mono text-sm font-bold text-slate-900 whitespace-nowrap">{{ i.amount|currency }}</td>
-                    <td class="text-center">
+                    <td class="text-center hide-mobile">
                         {% if i.item_type and i.item_type != 'other' %}
                         <span class="badge badge-type">{{ i.item_type }}</span>
                         {% endif %}
