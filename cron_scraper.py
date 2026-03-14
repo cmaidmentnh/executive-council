@@ -11,6 +11,7 @@ Usage:
 """
 
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -20,16 +21,30 @@ from datetime import datetime
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
+import boto3
+
 from scraper import (
     clean_text, extract_amount, extract_vendor, extract_dates,
     extract_funding_source, classify_item
 )
 from rescrape_2022 import parse_meeting_dot_format
 from notifications import send_notifications, format_currency
+from downloader import (
+    ensure_schema as ensure_download_schema,
+    create_session as create_download_session,
+    scrape_and_download_meeting
+)
 
 DB_PATH = Path(__file__).parent / "executive_council.db"
+DOWNLOAD_DIR = Path(__file__).parent / "downloads"
 BASE_URL = "https://www.sos.nh.gov"
 LOG_PATH = Path(__file__).parent / "cron_scraper.log"
+
+# R2 config
+R2_BUCKET = "executive-council-docs"
+R2_ENDPOINT = "https://ecdb5e1e7f77f60c63411ccbf171edc8.r2.cloudflarestorage.com"
+R2_ACCESS_KEY = "985056ec54f1b907ba443ba8631aa24a"
+R2_SECRET_KEY = "8f1e8baedeb2b0866048aeff6e23458e018f45f27d11672f139eef12870a1d62"
 
 # Set up logging
 logging.basicConfig(
@@ -378,6 +393,46 @@ def check_for_late_items(page, conn):
     return updates
 
 
+def download_and_upload_pdfs(meeting_id, meeting_date, meeting_url, conn):
+    """Download PDFs for a meeting and upload them to R2."""
+    ensure_download_schema()
+    DOWNLOAD_DIR.mkdir(exist_ok=True)
+
+    session = create_download_session()
+    c = conn.cursor()
+    c.execute("SELECT id, nid, title, meeting_date, url FROM meetings WHERE id = ?", (meeting_id,))
+    row = c.fetchone()
+    if not row:
+        log.warning(f"Meeting {meeting_id} not found for PDF download")
+        return
+
+    downloaded, failed = scrape_and_download_meeting(session, row, conn)
+    log.info(f"PDFs: {downloaded} downloaded, {failed} failed for {meeting_date}")
+
+    # Upload to R2
+    meeting_dir = DOWNLOAD_DIR / meeting_date
+    if not meeting_dir.exists():
+        log.warning(f"No download dir for {meeting_date}")
+        return
+
+    try:
+        s3 = boto3.client('s3',
+            endpoint_url=R2_ENDPOINT,
+            aws_access_key_id=R2_ACCESS_KEY,
+            aws_secret_access_key=R2_SECRET_KEY,
+            region_name='auto'
+        )
+        uploaded = 0
+        for pdf in meeting_dir.glob('*.pdf'):
+            key = f"{meeting_date}/{pdf.name}"
+            s3.upload_file(str(pdf), R2_BUCKET, key,
+                          ExtraArgs={'ContentType': 'application/pdf'})
+            uploaded += 1
+        log.info(f"R2: uploaded {uploaded} PDFs for {meeting_date}")
+    except Exception as e:
+        log.error(f"R2 upload failed for {meeting_date}: {e}")
+
+
 def main():
     force = '--force' in sys.argv
 
@@ -423,6 +478,8 @@ def main():
 
                     if count > 0:
                         new_meetings_found.append((meeting_id, meeting))
+                        # Download PDFs and upload to R2
+                        download_and_upload_pdfs(meeting_id, meeting['date'], meeting['url'], conn)
 
                     time.sleep(2)
             else:
@@ -443,11 +500,17 @@ def main():
                 sent = send_notifications(summary, db_path=DB_PATH)
                 log.info(f"Sent {sent} notification emails")
 
-    # Send late item update notifications
+    # Handle late items: download PDFs, upload to R2, send notifications
     for meeting_id, new_count in late_item_updates:
+        # Download any new PDFs and upload to R2
+        c = conn.cursor()
+        c.execute("SELECT meeting_date, url FROM meetings WHERE id = ?", (meeting_id,))
+        m_row = c.fetchone()
+        if m_row:
+            download_and_upload_pdfs(meeting_id, m_row['meeting_date'], m_row['url'], conn)
+
         summary = build_notification_summary(meeting_id, conn)
         if summary:
-            # Override subject prefix for late items
             summary['_is_late_update'] = True
             summary['_new_late_count'] = new_count
             log.info(f"Sending late item notifications for meeting {meeting_id} ({new_count} new items)...")
