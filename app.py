@@ -145,6 +145,52 @@ def compact_date_filter(value):
         return value
 
 
+# ─── SEO / AI CRAWLER ROUTES ───
+
+@app.route('/robots.txt')
+def robots_txt():
+    content = """User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /login
+Disallow: /register
+Disallow: /api/
+
+Sitemap: https://executivecouncilnh.com/sitemap.xml
+"""
+    return Response(content, mimetype='text/plain')
+
+
+@app.route('/llms.txt')
+def llms_txt():
+    content = """# Granite State G&C Tracker
+> executivecouncilnh.com
+
+Searchable database of New Hampshire Executive Council meetings, contracts, votes, and appointments from 2012 to present.
+
+## Key Pages
+- /meetings - Browse all Executive Council meetings by date
+- /items - Browse agenda items (contracts, appointments, settlements)
+- /councilors - Current and past Executive Councilors with vote records
+- /vendors - State vendors and contractors with contract history
+- /departments - State departments and agencies with spending data
+- /nominations - Personnel appointments and confirmations
+- /contested - Non-unanimous votes and contested items
+- /search - Full-text search across all meetings and agenda items
+
+## Data
+- 14+ years of meeting data (2012-2026)
+- Thousands of agenda items with amounts, votes, and supporting documents
+- Individual councilor vote records on every item
+- Vendor contract history and spending totals
+- Department-level spending analysis
+
+## About
+The Granite State G&C Tracker is a public resource for transparency in New Hampshire state government. The Executive Council approves state contracts, confirms appointments, and oversees executive spending.
+"""
+    return Response(content, mimetype='text/plain')
+
+
 # ─── ROUTES ───
 
 @app.route('/')
