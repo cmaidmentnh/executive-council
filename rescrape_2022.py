@@ -91,13 +91,41 @@ def parse_meeting_dot_format(page_text, page_html):
         'RECOVERY', 'HOUSING', 'ENERGY', 'FINANCE'
     ]
 
+    # Tokens that must appear in a mixed-case dept header. Conservative — these
+    # are top-level agency words. Sub-units (Bureau/Office of X) handled separately.
+    mixed_case_dept_tokens = (
+        'Department', 'Authority', 'Commission', 'Treasury', 'Council',
+        'Hospital', 'Adjutant General', 'Veterans', 'Liquor', 'Lottery',
+        'Fish and Game', 'Banking', 'Secretary of State', 'Judicial',
+        'Public Employees', 'Retirement', 'New Hampshire', 'Insurance',
+    )
+
     def is_dept_line(line):
-        """Check if a line is a department header (all-caps with dept keywords)."""
-        if not re.match(r'^[A-Z][A-Z\s,&.\'\-/()]+$', line):
+        """Check if a line is a department header.
+
+        Older SoS pages used ALL-CAPS dept names ("DEPARTMENT OF TRANSPORTATION");
+        2026+ pages use title case ("Department of Transportation"). Detect both.
+        """
+        if len(line) < 8 or len(line) > 80:
             return False
-        if len(line) < 10:
+        if line.endswith(':') or line.endswith('.') or line.endswith(','):
             return False
-        return any(kw in line.upper() for kw in dept_keywords)
+        # ALL-CAPS form
+        if re.match(r'^[A-Z][A-Z\s,&.\'\-/()]+$', line):
+            return any(kw in line.upper() for kw in dept_keywords)
+        # Mixed-case form: short title-cased line containing top-level agency token
+        if re.match(r"^[A-Z][A-Za-z'’\-,&\s/.()]+$", line):
+            # Skip obvious item-line / continuation phrases
+            for skip in ('Authorize ', 'Approve ', 'Effective ', 'The Department',
+                          'For additional', 'Download', 'Supplemental'):
+                if skip in line:
+                    return False
+            # Skip lines that are clearly sub-departments — handled by is_sub_dept_line
+            if re.match(r'^(Office|Division|Bureau|Board) of ', line):
+                return False
+            # Word-boundary match so "Commissioner" doesn't match the "Commission" token
+            return any(re.search(rf'\b{re.escape(tok)}\b', line) for tok in mixed_case_dept_tokens)
+        return False
 
     def is_sub_dept_line(line):
         """Check if line is a sub-department."""
@@ -122,7 +150,8 @@ def parse_meeting_dot_format(page_text, page_html):
 
         # Detect department names
         if is_dept_line(line):
-            current_department = clean_text(line)
+            # Normalize to upper case for consistency with historical data
+            current_department = clean_text(line).upper()
             current_sub_dept = ''
             i += 1
             continue
@@ -134,13 +163,16 @@ def parse_meeting_dot_format(page_text, page_html):
             continue
 
         # Match numbered item in multiple formats:
-        # "#N Description" (hash format)
+        # "#N Description" / "#NNN Description" (hash format, 2026+ uses 3-digit padding + single space)
         # "N. Description" or "N.Description" (dot format)
         # "N<spaces>Description" (space format, 2+ spaces)
         # With optional letter suffix: #NA, NA., NA<spaces>
-        item_match = re.match(r'^#?(\d+)([A-Z])?(?:\.\s*|\s{2,})(.*)', line)
+        # Hash-prefixed: allow single space. Bare digit: require dot or 2+ spaces (avoid matching prose like "5 years").
+        item_match = re.match(r'^#(\d+)([A-Z])?(?:\.\s*|\s+)(.*)', line)
+        if not item_match:
+            item_match = re.match(r'^(\d+)([A-Z])?(?:\.\s*|\s{2,})(.*)', line)
         if item_match:
-            item_num = item_match.group(1)
+            item_num = item_match.group(1).lstrip('0') or '0'
             item_suffix = item_match.group(2) or ''
             item_text = item_match.group(3).strip()
 
@@ -175,7 +207,9 @@ def parse_meeting_dot_format(page_text, page_html):
                 next_line = lines[j].strip()
 
                 # Stop: next numbered item (any format)
-                if re.match(r'^#?\d+[A-Z]?(?:\.\s*|\s{2,})\w', next_line):
+                if re.match(r'^#\d+[A-Z]?(?:\.\s*|\s+)\w', next_line):
+                    break
+                if re.match(r'^\d+[A-Z]?(?:\.\s*|\s{2,})\w', next_line):
                     break
                 # Stop: next sub-item letter
                 if re.match(r'^[A-Z]\.\s+', next_line) and len(next_line) > 5:

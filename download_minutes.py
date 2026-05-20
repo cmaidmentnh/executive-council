@@ -53,7 +53,11 @@ def main():
         mmdd = dt.strftime('%m%d')
         code = dt.strftime('%m%d%y')
 
-        url = f"https://media.sos.nh.gov/govcouncil/{year}/{mmdd}/GC Minutes {code}.pdf"
+        # SoS switched filename format around 2026. Try dashed form first, then spaces.
+        url_candidates = [
+            f"https://media.sos.nh.gov/govcouncil/{year}/{mmdd}/GC-Minutes-{code}.pdf",
+            f"https://media.sos.nh.gov/govcouncil/{year}/{mmdd}/GC Minutes {code}.pdf",
+        ]
 
         mdir = DOWNLOAD_DIR / meeting_date
         mdir.mkdir(parents=True, exist_ok=True)
@@ -61,20 +65,26 @@ def main():
 
         if save_path.exists():
             fsize = save_path.stat().st_size
+            url = url_candidates[0]
         else:
-            try:
-                r = session.get(url, timeout=30)
-                if r.status_code == 200 and len(r.content) > 500:
-                    with open(save_path, 'wb') as f:
-                        f.write(r.content)
-                    fsize = len(r.content)
-                else:
-                    failed += 1
-                    if idx % 25 == 0 or idx <= 5:
-                        print(f"  [{idx}/{len(todo)}] {meeting_date}: not found ({r.status_code})")
+            url = None
+            last_status = None
+            for candidate in url_candidates:
+                try:
+                    r = session.get(candidate, timeout=30)
+                    last_status = r.status_code
+                    if r.status_code == 200 and len(r.content) > 500:
+                        with open(save_path, 'wb') as f:
+                            f.write(r.content)
+                        fsize = len(r.content)
+                        url = candidate
+                        break
+                except Exception:
                     continue
-            except Exception as e:
+            if url is None:
                 failed += 1
+                if idx % 25 == 0 or idx <= 5:
+                    print(f"  [{idx}/{len(todo)}] {meeting_date}: not found ({last_status})")
                 continue
 
         c.execute("""INSERT OR REPLACE INTO meeting_downloads

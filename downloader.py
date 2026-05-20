@@ -266,16 +266,19 @@ def scrape_and_download_meeting(session, meeting_row, conn):
         fname = pdf_url.split('/')[-1]
 
         if format_type == 'new':
-            # New CDN: '001A GC Agenda MMDDYYYY.pdf'
-            item_match = re.match(r'^0*(\d+)([A-Z])?\s+GC\s+', fname, re.IGNORECASE)
+            # New CDN: '001A GC Agenda MMDDYYYY.pdf' (older) or '137-GC-Agenda-052026.pdf' (2026+, dashes)
+            # URL-encoded space %20 is also possible.
+            fname_normalized = fname.replace('%20', ' ')
+            item_match = re.match(r'^0*(\d+)([A-Z])?[-\s]+GC[-\s]+', fname_normalized, re.IGNORECASE)
             if not item_match:
-                if 'quick result' in fname.lower():
+                lname = fname_normalized.lower()
+                if 'quick result' in lname or 'quick-result' in lname:
                     _save_meeting_doc(session, conn, meeting_id, meeting_date,
                                       'quick_results', pdf_url, mdir)
-                elif 'minutes' in fname.lower():
+                elif 'minutes' in lname:
                     _save_meeting_doc(session, conn, meeting_id, meeting_date,
                                       'minutes', pdf_url, mdir)
-                elif 'printable' in fname.lower():
+                elif 'printable' in lname:
                     _save_meeting_doc(session, conn, meeting_id, meeting_date,
                                       'printable_agenda', pdf_url, mdir)
                 return False
