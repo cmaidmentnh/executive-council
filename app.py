@@ -191,6 +191,35 @@ The Granite State G&C Tracker is a public resource for transparency in New Hamps
     return Response(content, mimetype='text/plain')
 
 
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    base = "https://executivecouncilnh.com"
+    urls = []
+    for path in ('/', '/meetings', '/items', '/councilors', '/vendors',
+                 '/departments', '/nominations', '/contested', '/search'):
+        urls.append((f"{base}{path}", None, '1.0' if path == '/' else '0.7'))
+    try:
+        db = get_db()
+        for row in db.execute("SELECT id FROM councilors").fetchall():
+            urls.append((f"{base}/councilor/{row[0]}", None, '0.6'))
+        for row in db.execute(
+                "SELECT id, meeting_date FROM meetings ORDER BY meeting_date DESC LIMIT 2000").fetchall():
+            lastmod = (row[1] or '')[:10] or None
+            urls.append((f"{base}/meeting/{row[0]}", lastmod, '0.6'))
+    except Exception as e:
+        app.logger.error(f"sitemap generation error: {e}")
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, lastmod, prio in urls:
+        entry = f'  <url><loc>{loc}</loc>'
+        if lastmod:
+            entry += f'<lastmod>{lastmod}</lastmod>'
+        entry += f'<priority>{prio}</priority></url>'
+        xml.append(entry)
+    xml.append('</urlset>')
+    return Response('\n'.join(xml), mimetype='application/xml')
+
+
 # ─── ROUTES ───
 
 @app.route('/')
