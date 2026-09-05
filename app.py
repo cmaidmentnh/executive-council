@@ -15,6 +15,19 @@ import csv
 import io
 
 app = Flask(__name__)
+
+# Session cookie hardening.
+#   SECURE   - never send the session cookie over an unencrypted connection.
+#              Flask's default is False, which means one plain http:// request,
+#              made before the redirect to https, leaks the cookie to anyone on
+#              the network path. Whoever copies it is logged in as that user.
+#   HTTPONLY - JavaScript cannot read it, so injected script cannot steal it.
+#   SAMESITE - not sent when another site triggers a request here, which stops a
+#              malicious page acting as a logged-in user.
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 DB_PATH = os.path.join(os.path.dirname(__file__), "executive_council.db")
 R2_BASE = "https://pub-53c5014580f5456185d5efde8511a616.r2.dev"
